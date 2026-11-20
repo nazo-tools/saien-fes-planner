@@ -142,12 +142,12 @@ export function priceOf(show, start) {
 export function summarize(plan, shows) {
   const byId = new Map(shows.map((s) => [s.id, s]));
   const days = {};
-  const total = { count: 0, price: 0, bought: 0 };
+  const total = { count: 0, price: 0, bought: 0, boughtPrice: 0 };
   for (const p of plan) {
     if (p.showId == null) continue;
     const show = byId.get(p.showId);
     if (!show) continue;
-    const d = (days[p.day] ??= { count: 0, price: 0, minutes: 0 });
+    const d = (days[p.day] ??= { count: 0, price: 0, minutes: 0, bought: 0, boughtPrice: 0 });
     const price = priceOf(show, p.start);
     const [a, b] = span(p);
     d.count++;
@@ -155,7 +155,12 @@ export function summarize(plan, shows) {
     d.minutes += b - a;
     total.count++;
     total.price += price;
-    if (p.bought) total.bought++;
+    if (p.bought) {
+      d.bought++;
+      d.boughtPrice += price;
+      total.bought++;
+      total.boughtPrice += price;
+    }
   }
   return { days, total };
 }
