@@ -6,6 +6,7 @@ import {
   toMinutes,
   toHHMM,
   slotStatus,
+  slotFace,
   choose,
   unchoose,
   gapsOf,
@@ -126,8 +127,9 @@ function toggleSlot(show, day, x) {
   setPlan(plan, msg, before);
 }
 
-function slotLabel(show, day, x, st) {
+function slotLabel(show, day, x, st, outside = false) {
   const base = `${show.title} ${DAY_LABEL[day]} ${x.start}から${x.end}`;
+  if (outside && st.state !== "chosen") return `${base}、選んだ空き時間には入りません`;
   switch (st.state) {
     case "chosen": return `${base}、予定に入っています。押すと外します`;
     case "moved": return `${base}、別の回を選んでいます。押すとこの回に入れ替えます`;
@@ -137,14 +139,6 @@ function slotLabel(show, day, x, st) {
   }
 }
 
-function slotHint(show, day, x, st) {
-  if (st.state === "chosen") return "選択中";
-  if (st.state === "tight") return `あき${st.gap}分`;
-  if (st.state === "conflict") return "重なる";
-  if (st.state === "moved") return "入れ替え";
-  if (show.special?.[x.start]) return show.special[x.start].label;
-  return `〜${x.end}`;
-}
 
 /* ---------------- 絞り込み ---------------- */
 
@@ -309,6 +303,7 @@ function legend() {
     h("span", null, h("i"), "入る"),
     h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
     h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
+    h("span", null, h("i", { class: "l-outside" }), "時間外（選んだ空きに入らない）"),
   );
 }
 
@@ -326,15 +321,16 @@ function card(show) {
   const fav = S.favorites.has(show.id);
   const slots = show.slots[day].map((x) => {
     const st = slotStatus(slotObj(show, day, x), S.plan, S.buffer);
-    const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+    const outside = !!S.gap && !fitsGap(x, S.gap, S.buffer);
+    const face = slotFace(st, x, { outside, special: show.special?.[x.start]?.label });
     return h("button", {
       type: "button",
       id: `s-${show.id}-${day}-${x.start}`,
-      class: `slot ${st.state}${outside ? " outside" : ""}`,
+      class: `slot ${face.kind}`,
       "aria-pressed": String(st.state === "chosen"),
-      "aria-label": slotLabel(show, day, x, st),
+      "aria-label": slotLabel(show, day, x, st, outside),
       onclick: () => toggleSlot(show, day, x),
-    }, x.start, h("small", null, slotHint(show, day, x, st)));
+    }, h("b", null, x.start), h("small", null, face.word));
   });
   const pickedElsewhere = picked && picked.day !== day ? h("p", { class: "note" }, `${DAY_LABEL[picked.day]} ${picked.start} の回を選んでいます`) : null;
 
@@ -435,19 +431,20 @@ function gridView() {
       lines.map((y, i) => h("div", { class: `hline${i % 2 ? " half" : ""}`, style: `top:${y}px` })));
     for (const x of s.slots[day]) {
       const st = slotStatus(slotObj(s, day, x), S.plan, S.buffer);
-      const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+      const outside = !!S.gap && !fitsGap(x, S.gap, S.buffer);
+      const face = slotFace(st, x, { outside });
       const top = (toMinutes(x.start) - O) * PPM + PAD;
       const ht = (toMinutes(x.end) - toMinutes(x.start)) * PPM;
       col.append(h("button", {
         type: "button",
         id: `g-${s.id}-${day}-${x.start}`,
-        class: `gb ${st.state}${outside ? " outside" : ""}`,
+        class: `gb ${face.kind}`,
         style: `top:${top}px;height:${ht - 1}px`,
         "aria-pressed": String(st.state === "chosen"),
-        "aria-label": slotLabel(s, day, x, st),
+        "aria-label": slotLabel(s, day, x, st, outside),
         title: `${s.title} ${x.start}-${x.end}`,
         onclick: () => toggleSlot(s, day, x),
-      }, `${st.state === "chosen" ? "✓ " : ""}${x.start}–${x.end}`));
+      }, `${x.start}–${x.end}`, face.kind === "free" ? null : h("small", null, face.word)));
     }
     return col;
   });

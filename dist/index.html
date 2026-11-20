@@ -9,38 +9,51 @@
    --accent  : 自分が選んだもの（予定に入っている回）
    --f11/--f2/--f4 : 階。カードの印と時間割の列見出しにだけ使う
    --warn    : 入るけれど移動がきつい
-   重なる回は色を足さず、薄くして線で消す */
+   --st-*    : 回ボタンの状態。色に加えて、地の模様・枠の線種・右上の記号・2行目の言葉でも分ける
+               （選択中=塗り / 入る=実線 / 移動きつい=黄地+破線 / 重なる=斜線+取り消し線 / 時間外=地なし+点線） */
 :root{
   color-scheme:light dark;
   --bg:#eef1f5; --surface:#fff; --sunken:#e4e8ee; --raised:#f7f9fb;
-  --ink:#141b26; --muted:#4a5566; --subtle:#6b7687;
+  --ink:#141b26; --muted:#4a5566; --subtle:#5a6577;
   --line:#d3d9e2; --line-strong:#b9c2ce;
   --accent:#c62f3b; --accent-ink:#fff; --accent-soft:#fbe9ea;
-  --f11:#7b3fb3; --f2:#157a86; --f4:#a8650b;
+  --f11:#7b3fb3; --f2:#157a86; --f4:#8f5409;
   --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
   --ok:#1e6b48;
+  --st-line:#7d889a;
+  --st-tight-line:#b26a00; --st-tight-ink:#7a4500;
+  --st-clash-a:#e4e8ee; --st-clash-b:#c9d0da; --st-clash-ink:#4a5566;
+  --st-out-line:#b9c2ce; --st-out-ink:#5a6577;
   --radius:6px;
   --shadow:0 1px 2px rgba(20,27,38,.06),0 2px 8px rgba(20,27,38,.05);
   --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
-  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#8d97a6;
+  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
   --line:#2e3744; --line-strong:#3f4a5a;
   --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --st-line:#6b7789;
+  --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
+  --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
+  --st-out-line:#3f4a5a; --st-out-ink:#97a1b0;
   --shadow:0 1px 2px rgba(0,0,0,.4);
 }}
 :root[data-theme="dark"]{
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
-  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#8d97a6;
+  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
   --line:#2e3744; --line-strong:#3f4a5a;
   --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --st-line:#6b7789;
+  --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
+  --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
+  --st-out-line:#3f4a5a; --st-out-ink:#97a1b0;
   --shadow:0 1px 2px rgba(0,0,0,.4);
 }
 
@@ -129,25 +142,46 @@ select,input[type="search"],input[type="time"]{border:1px solid var(--line-stron
 .meta .fl{font-weight:700;color:var(--fc)}
 .tags{margin:4px 0 0;font-size:.75rem;color:var(--subtle)}
 .note{margin:6px 0 0;font-size:.75rem;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:3px 8px}
-.slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.slot{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);
-  padding:4px 8px;font-size:.82rem;cursor:pointer;min-height:34px;min-width:58px;line-height:1.15;text-align:center}
-.slot small{display:block;font-size:.66rem;color:var(--subtle)}
+/* 回ボタン：スマホは4列で幅をそろえ、広い画面はマス幅84pxで並べられるだけ並べる */
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+@media (min-width:600px){.slots{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}}
+.slot{position:relative;min-width:0;min-height:44px;border:1.5px solid var(--st-line);background:var(--surface);border-radius:var(--radius);
+  padding:4px 18px 4px 8px;cursor:pointer;line-height:1.15;text-align:left;
+  display:flex;flex-direction:column;justify-content:center;gap:1px}
+.slot b{font-size:.95rem;font-weight:700}
+.slot small{font-size:.7rem;color:var(--subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot:hover{border-color:var(--ink)}
-.slot.chosen{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
-.slot.chosen small{color:var(--accent-ink);opacity:.85}
-.slot.tight{border-style:dashed;border-color:var(--warn-line);background:var(--warn-bg)}
-.slot.tight small{color:var(--warn)}
-.slot.moved{border-style:dotted}
-.slot.conflict{color:var(--muted);background:var(--sunken);border-color:var(--line);text-decoration:line-through}
-.slot.conflict small{text-decoration:none}
-.slot.outside{opacity:.55}
+/* 右上の記号。SVGを型抜きに使い、文字色で塗る */
+.slot::after,.gb::after{content:"";position:absolute;top:5px;right:4px;width:12px;height:12px;background:currentColor;
+  -webkit-mask:var(--mk) center/contain no-repeat;mask:var(--mk) center/contain no-repeat}
+.slot.free::after,.gb.free::after{content:none}
+.chosen{--mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3L13 4.5'/%3E%3C/svg%3E")}
+.tight{--mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.8L15 14H1z'/%3E%3Cpath d='M8 6.5v3.2M8 11.8v.1'/%3E%3C/svg%3E")}
+.conflict,.moved{--mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 5h11l-3-3M14 11H3l3 3'/%3E%3C/svg%3E")}
+.outside{--mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='M8 4.5V8l2 1.5M3.5 12.5l9-9'/%3E%3C/svg%3E")}
+.slot.chosen{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.slot.chosen small{color:var(--accent-ink)}
+.slot.tight{border-style:dashed;border-color:var(--st-tight-line);background:var(--warn-bg)}
+.slot.tight small,.slot.tight::after{color:var(--st-tight-ink)}
+.slot.conflict{border-color:transparent;color:var(--st-clash-ink);
+  background:repeating-linear-gradient(135deg,var(--st-clash-a) 0 5px,var(--st-clash-b) 5px 8px)}
+.slot.conflict b{text-decoration:line-through;text-decoration-thickness:1.5px}
+.slot.conflict small{color:var(--st-clash-ink)}
+.slot.outside{background:transparent;border:1.5px dotted var(--st-out-line);color:var(--st-out-ink)}
+.slot.outside b{font-weight:500}
+.slot.outside small{color:var(--st-out-ink)}
+@media (forced-colors:active){
+  .slot::after,.gb::after{background:CanvasText}
+  .slot.chosen::after,.gb.chosen::after{background:HighlightText}
+  .slot.chosen,.gb.chosen{forced-color-adjust:none;background:Highlight;color:HighlightText}
+}
 .none{padding:24px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.72rem;color:var(--subtle);margin:0 0 8px}
 .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;border:1px solid var(--line-strong);vertical-align:-1px;margin-right:4px}
 .legend .l-chosen{background:var(--accent);border-color:var(--accent)}
 .legend .l-tight{background:var(--warn-bg);border:1px dashed var(--warn-line)}
-.legend .l-conflict{background:var(--sunken)}
+.legend .l-conflict{border-color:transparent;background:repeating-linear-gradient(135deg,var(--st-clash-a) 0 2px,var(--st-line) 2px 3px)}
+.legend .l-outside{background:transparent;border:1px dotted var(--st-out-ink)}
 
 /* ---- 予約不要 ---- */
 details.walk{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
@@ -169,13 +203,17 @@ details.walk summary{cursor:pointer;padding:10px 14px;font-weight:700;font-size:
 .gaxis span{position:absolute;right:6px;font-size:.68rem;color:var(--subtle);transform:translateY(-50%)}
 .hline{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}
 .hline.half{border-top-style:dotted}
-.gb{position:absolute;left:3px;right:3px;border:1px solid var(--line-strong);border-radius:4px;background:var(--raised);
-  font-size:.68rem;line-height:1.2;padding:2px 4px;cursor:pointer;overflow:hidden;text-align:left}
+.gb{position:absolute;left:3px;right:3px;border:1.5px solid var(--st-line);border-radius:4px;background:var(--surface);
+  font-size:.68rem;line-height:1.2;padding:2px 16px 2px 4px;cursor:pointer;overflow:hidden;text-align:left}
+.gb small{display:block;font-size:.62rem}
+.gb::after{top:3px;right:2px;width:11px;height:11px}
 .gb:hover{border-color:var(--ink);z-index:1}
 .gb.chosen{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
-.gb.tight{background:var(--warn-bg);border:1px dashed var(--warn-line)}
-.gb.conflict{background:var(--sunken);color:var(--muted);border-color:var(--line);text-decoration:line-through}
-.gb.outside{opacity:.5}
+.gb.tight{background:var(--warn-bg);border-style:dashed;border-color:var(--st-tight-line);color:var(--st-tight-ink)}
+.gb.conflict{border-color:transparent;color:var(--st-clash-ink);text-decoration:line-through;
+  background:repeating-linear-gradient(135deg,var(--st-clash-a) 0 5px,var(--st-clash-b) 5px 8px)}
+.gb.conflict small{text-decoration:none}
+.gb.outside{background:var(--surface);border:1.5px dotted var(--st-out-line);color:var(--st-out-ink)}
 
 /* ---- 予定 ---- */
 .plan{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -822,6 +860,23 @@ function slotStatus(slot, plan, bufferMin = 0) {
 
   if (slot.showId != null && plan.some((p) => p.showId === slot.showId)) return { state: "moved" };
   return { state: "free" };
+}
+
+/**
+ * 回ボタンの見た目の種類（kind = CSSのクラス）と2行目の言葉。
+ * 色だけに頼らないよう、どの状態にも言葉を付ける。
+ * outside … 空き時間で絞っていて、その空きに入らない回。選択中以外は状態より優先する。
+ * special … 特別回の札（入る回のときだけ終了時刻の代わりに出す）
+ */
+function slotFace(st, x, { outside = false, special = null } = {}) {
+  if (st.state === "chosen") return { kind: "chosen", word: "予定中" };
+  if (outside) return { kind: "outside", word: "時間外" };
+  switch (st.state) {
+    case "tight": return { kind: "tight", word: `あき${st.gap}分` };
+    case "conflict": return { kind: "conflict", word: "重なる" };
+    case "moved": return { kind: "moved", word: "入れ替え" };
+    default: return { kind: "free", word: special ?? `〜${x.end}` };
+  }
 }
 
 /**
@@ -1504,8 +1559,9 @@ function toggleSlot(show, day, x) {
   setPlan(plan, msg, before);
 }
 
-function slotLabel(show, day, x, st) {
+function slotLabel(show, day, x, st, outside = false) {
   const base = `${show.title} ${DAY_LABEL[day]} ${x.start}から${x.end}`;
+  if (outside && st.state !== "chosen") return `${base}、選んだ空き時間には入りません`;
   switch (st.state) {
     case "chosen": return `${base}、予定に入っています。押すと外します`;
     case "moved": return `${base}、別の回を選んでいます。押すとこの回に入れ替えます`;
@@ -1515,14 +1571,6 @@ function slotLabel(show, day, x, st) {
   }
 }
 
-function slotHint(show, day, x, st) {
-  if (st.state === "chosen") return "選択中";
-  if (st.state === "tight") return `あき${st.gap}分`;
-  if (st.state === "conflict") return "重なる";
-  if (st.state === "moved") return "入れ替え";
-  if (show.special?.[x.start]) return show.special[x.start].label;
-  return `〜${x.end}`;
-}
 
 /* ---------------- 絞り込み ---------------- */
 
@@ -1687,6 +1735,7 @@ function legend() {
     h("span", null, h("i"), "入る"),
     h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
     h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
+    h("span", null, h("i", { class: "l-outside" }), "時間外（選んだ空きに入らない）"),
   );
 }
 
@@ -1704,15 +1753,16 @@ function card(show) {
   const fav = S.favorites.has(show.id);
   const slots = show.slots[day].map((x) => {
     const st = slotStatus(slotObj(show, day, x), S.plan, S.buffer);
-    const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+    const outside = !!S.gap && !fitsGap(x, S.gap, S.buffer);
+    const face = slotFace(st, x, { outside, special: show.special?.[x.start]?.label });
     return h("button", {
       type: "button",
       id: `s-${show.id}-${day}-${x.start}`,
-      class: `slot ${st.state}${outside ? " outside" : ""}`,
+      class: `slot ${face.kind}`,
       "aria-pressed": String(st.state === "chosen"),
-      "aria-label": slotLabel(show, day, x, st),
+      "aria-label": slotLabel(show, day, x, st, outside),
       onclick: () => toggleSlot(show, day, x),
-    }, x.start, h("small", null, slotHint(show, day, x, st)));
+    }, h("b", null, x.start), h("small", null, face.word));
   });
   const pickedElsewhere = picked && picked.day !== day ? h("p", { class: "note" }, `${DAY_LABEL[picked.day]} ${picked.start} の回を選んでいます`) : null;
 
@@ -1813,19 +1863,20 @@ function gridView() {
       lines.map((y, i) => h("div", { class: `hline${i % 2 ? " half" : ""}`, style: `top:${y}px` })));
     for (const x of s.slots[day]) {
       const st = slotStatus(slotObj(s, day, x), S.plan, S.buffer);
-      const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+      const outside = !!S.gap && !fitsGap(x, S.gap, S.buffer);
+      const face = slotFace(st, x, { outside });
       const top = (toMinutes(x.start) - O) * PPM + PAD;
       const ht = (toMinutes(x.end) - toMinutes(x.start)) * PPM;
       col.append(h("button", {
         type: "button",
         id: `g-${s.id}-${day}-${x.start}`,
-        class: `gb ${st.state}${outside ? " outside" : ""}`,
+        class: `gb ${face.kind}`,
         style: `top:${top}px;height:${ht - 1}px`,
         "aria-pressed": String(st.state === "chosen"),
-        "aria-label": slotLabel(s, day, x, st),
+        "aria-label": slotLabel(s, day, x, st, outside),
         title: `${s.title} ${x.start}-${x.end}`,
         onclick: () => toggleSlot(s, day, x),
-      }, `${st.state === "chosen" ? "✓ " : ""}${x.start}–${x.end}`));
+      }, `${x.start}–${x.end}`, face.kind === "free" ? null : h("small", null, face.word)));
     }
     return col;
   });

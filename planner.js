@@ -57,6 +57,23 @@ export function slotStatus(slot, plan, bufferMin = 0) {
 }
 
 /**
+ * 回ボタンの見た目の種類（kind = CSSのクラス）と2行目の言葉。
+ * 色だけに頼らないよう、どの状態にも言葉を付ける。
+ * outside … 空き時間で絞っていて、その空きに入らない回。選択中以外は状態より優先する。
+ * special … 特別回の札（入る回のときだけ終了時刻の代わりに出す）
+ */
+export function slotFace(st, x, { outside = false, special = null } = {}) {
+  if (st.state === "chosen") return { kind: "chosen", word: "予定中" };
+  if (outside) return { kind: "outside", word: "時間外" };
+  switch (st.state) {
+    case "tight": return { kind: "tight", word: `あき${st.gap}分` };
+    case "conflict": return { kind: "conflict", word: "重なる" };
+    case "moved": return { kind: "moved", word: "入れ替え" };
+    default: return { kind: "free", word: special ?? `〜${x.end}` };
+  }
+}
+
+/**
  * 回を予定に入れる。同じ公演の別の回と、時間が重なる予定は外す。
  * 外したものは removed で返す（画面で「〇〇を外しました」と出すため）。
  */
