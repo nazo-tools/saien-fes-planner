@@ -87,6 +87,23 @@ select,input[type="search"],input[type="time"]{border:1px solid var(--line-stron
 .toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);padding:5px 10px;
   font-size:.8rem;cursor:pointer;color:var(--muted);min-height:34px}
 .toggle[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.ftoggle{display:inline-flex;align-items:center;gap:6px}
+.ftoggle[aria-expanded="true"]{border-color:var(--ink);color:var(--ink);font-weight:700}
+.ftoggle .badge{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);
+  font-size:.72rem;font-weight:700;line-height:18px;text-align:center}
+.fpanel .legend{flex-basis:100%;margin:0}
+@media (min-width:960px){
+  .ftoggle,.m-only{display:none !important}
+  .fpanel{display:contents}
+}
+@media (max-width:959px){
+  .fpanel{display:none}
+  .fpanel.open{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-basis:100%;
+    border:1px solid var(--line);background:var(--sunken);border-radius:var(--radius);padding:10px}
+  .top-in{padding:8px 16px;gap:8px}
+  .brand span,.top .wk,.buf-top{display:none}
+  .seg button{padding:6px 10px}
+}
 .count{font-size:.8rem;color:var(--subtle);margin:0 0 8px}
 .gapnote{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--accent);
   background:var(--accent-soft);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:.88rem}

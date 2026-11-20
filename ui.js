@@ -37,6 +37,7 @@ const S = {
   buffer: saved?.buffer ?? 10,
   day: saved?.day ?? DAYS[0],
   view: "list", // list | grid
+  fopen: false, // スマホで絞り込み欄を開いているか
   q: "",
   floor: "all",
   diff: "all",
@@ -193,6 +194,14 @@ function sorted(list) {
 
 /* ---------------- 上部 ---------------- */
 
+function bufferField(id, cls) {
+  return h("label", { class: `field ${cls}`, for: id }, "移動にとる時間",
+    h("select", {
+      id,
+      onchange: (e) => { S.buffer = Number(e.target.value); persist(); render(); },
+    }, [0, 5, 10, 15, 20].map((n) => h("option", { value: n, selected: S.buffer === n }, `${n}分`))));
+}
+
 function topbar() {
   const dayBtns = FES.days.map((d) =>
     h("button", {
@@ -204,7 +213,7 @@ function topbar() {
         persist();
         render();
       },
-    }, `${d.label}(${d.weekday})`),
+    }, d.label, h("span", { class: "wk" }, `(${d.weekday})`)),
   );
   const viewBtns = [
     ["list", "一覧"],
@@ -212,16 +221,12 @@ function topbar() {
   ].map(([v, t]) =>
     h("button", { type: "button", "aria-pressed": String(S.view === v), onclick: () => { S.view = v; render(); } }, t),
   );
-  const buf = h("select", {
-    id: "buffer",
-    onchange: (e) => { S.buffer = Number(e.target.value); persist(); render(); },
-  }, [0, 5, 10, 15, 20].map((n) => h("option", { value: n, selected: S.buffer === n }, `${n}分`)));
 
   return h("header", { class: "top" },
     h("div", { class: "top-in" },
       h("div", { class: "brand" }, h("h1", null, FES.title), h("span", null, "予定づくり")),
       h("div", { class: "seg", role: "group", "aria-label": "日付" }, dayBtns),
-      h("label", { class: "field", for: "buffer" }, "移動にとる時間", buf),
+      bufferField("buffer", "buf-top"),
       h("div", { class: "seg", role: "group", "aria-label": "表示" }, viewBtns),
     ),
   );
@@ -273,18 +278,37 @@ function filters() {
   const tog = (label, key) =>
     h("button", { type: "button", class: "toggle", "aria-pressed": String(S[key]), onclick: () => { S[key] = !S[key]; render(); } }, label);
 
+  const active = ["floor", "diff", "len"].filter((k) => S[k] !== "all").length + (S.onlyFav ? 1 : 0) + (S.onlyFits ? 1 : 0);
+
   return h("div", { class: "tools" },
     h("label", { class: "sr", for: "q" }, "公演を検索"),
     h("input", {
       id: "q", type: "search", placeholder: "公演名・団体名・部屋で検索", value: S.q,
       oninput: (e) => { S.q = e.target.value; renderMain(); },
     }),
+    h("button", {
+      type: "button", id: "filter-toggle", class: "toggle ftoggle", "aria-expanded": String(S.fopen), "aria-controls": "filter-panel",
+      onclick: () => { S.fopen = !S.fopen; render(); },
+    }, "絞り込み", active ? h("span", { class: "badge" }, h("span", { class: "sr" }, "：設定中"), String(active)) : null),
+    h("div", { id: "filter-panel", class: S.fopen ? "fpanel open" : "fpanel" },
     sel("floor", "階", "floor", [["all", "すべて"], ["11F", "11階"], ["2F", "2階"], ["4F", "4階"]]),
     sel("diff", "難易度", "diff", [["all", "すべて"], ["low", "〜4"], ["mid", "5〜6"], ["high", "7〜"]]),
     sel("len", "所要", "len", [["all", "すべて"], ["30", "30分以内"], ["60", "60分以内"], ["90", "90分以内"], ["long", "90分超"]]),
     sel("sort", "並び", "sort", [["place", "場所順"], ["early", "早い回から"], ["hard", "難しい順"], ["easy", "易しい順"], ["short", "短い順"], ["cheap", "安い順"]]),
     tog("★だけ", "onlyFav"),
     tog("今の予定に入るものだけ", "onlyFits"),
+    bufferField("buffer-m", "m-only"),
+    legend(),
+    ),
+  );
+}
+
+function legend() {
+  return h("p", { class: "legend", "aria-hidden": "true" },
+    h("span", null, h("i", { class: "l-chosen" }), "選択中"),
+    h("span", null, h("i"), "入る"),
+    h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
+    h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
   );
 }
 
@@ -372,12 +396,6 @@ function listView() {
   return h("div", null,
     filters(),
     gapNote(),
-    h("p", { class: "legend", "aria-hidden": "true" },
-      h("span", null, h("i", { class: "l-chosen" }), "選択中"),
-      h("span", null, h("i"), "入る"),
-      h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
-      h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
-    ),
     h("p", { class: "count", role: "status" }, `${DAY_LABEL[S.day]} ${total}公演のうち ${shown.length}件`),
     shown.length
       ? h("div", { class: "cards" }, shown.map(card))
@@ -438,6 +456,7 @@ function gridView() {
       h("label", { class: "field", for: "gfloor" }, "階",
         h("select", { id: "gfloor", onchange: (e) => { S.floor = e.target.value; render(); } },
           [["all", "すべて"], ["11F", "11階"], ["2F", "2階"], ["4F", "4階"]].map(([v, t]) => h("option", { value: v, selected: S.floor === v }, t)))),
+      bufferField("buffer-m", "m-only"),
       h("span", { class: "count" }, "枠を押すと予定に入ります。重なる枠を押すと入れ替えます。"),
     ),
     gapNote(),
