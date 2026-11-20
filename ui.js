@@ -448,13 +448,21 @@ function gridView() {
     }
     return col;
   });
+  // 階ごとに列を絞る。会場では階単位で動くので、スマホでも横に流しすぎないように
+  const onDay = SHOWS.filter((s) => s.slots[day]);
+  const floorBtn = (v, t) => {
+    const n = v === "all" ? onDay.length : onDay.filter((s) => s.floor === v).length;
+    return h("button", {
+      type: "button", id: `gfl-${v}`, class: "gfl", "aria-pressed": String(S.floor === v), style: v === "all" ? null : floorStyle(v),
+      onclick: () => { S.floor = v; render(); },
+    }, v === "all" ? null : h("i", { "aria-hidden": "true" }), t, h("small", null, `${n}列`));
+  };
   return h("div", null,
+    h("div", { class: "gfloors", role: "group", "aria-label": "表示する階" },
+      floorBtn("all", "すべて"), floorBtn("11F", "11F"), floorBtn("2F", "2F"), floorBtn("4F", "4F")),
     h("div", { class: "tools" },
-      h("label", { class: "field", for: "gfloor" }, "階",
-        h("select", { id: "gfloor", onchange: (e) => { S.floor = e.target.value; render(); } },
-          [["all", "すべて"], ["11F", "11階"], ["2F", "2階"], ["4F", "4階"]].map(([v, t]) => h("option", { value: v, selected: S.floor === v }, t)))),
       bufferField("buffer-m", "m-only"),
-      h("span", { class: "count" }, "枠を押すと予定に入ります。重なる枠を押すと入れ替えます。"),
+      h("span", { class: "count" }, "枠を押すと予定に入ります。重なる枠を押すと入れ替えます。横にスクロールすると、ほかの部屋が出ます。"),
     ),
     gapNote(),
     h("div", { class: "grid-wrap" },
