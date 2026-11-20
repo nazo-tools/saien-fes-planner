@@ -16,6 +16,7 @@ import {
   nowNext,
   planToText,
 } from "./planner.js";
+import { arrange, explainMissing, MAX_WANT } from "./arrange.js";
 import { loadState, saveState, encodePlan, decodePlan } from "./storage.js";
 
 const DAYS = FES.days.map((d) => d.id);
@@ -47,6 +48,8 @@ const S = {
   sheet: false,
   shared: null, // 共有URLで受け取った予定
   toast: null,
+  arrDays: new Set(DAYS), // ★から組むときに使う日
+  arr: null, // ★から組んだ結果 { sig, busy, result, why }
 };
 
 function persist() {
@@ -445,6 +448,127 @@ function gridView() {
 
 /* ---------------- 予定 ---------------- */
 
+/* ---------------- ★から組む ---------------- */
+
+// 組んだ結果は、そのときの予定・★・移動時間・日が変わったら古くなる
+const arrSig = () => JSON.stringify([S.plan.map((p) => [p.showId, p.day, p.start, p.label]), [...S.favorites].sort(), S.buffer, [...S.arrDays].sort()]);
+
+function runArrange() {
+  const days = DAYS.filter((d) => S.arrDays.has(d));
+  const opts = { days, buffer: S.buffer, open: OPEN, close: CLOSE };
+  const sig = arrSig();
+  S.arr = { sig, busy: true };
+  render();
+  // 「考え中」を一度描いてから計算する（★が多いと0.5秒ほどかかる）
+  setTimeout(() => {
+    const result = arrange(SHOWS, [...S.favorites], S.plan, opts);
+    const why = result.best < result.total && !result.tooMany ? explainMissing(SHOWS, [...S.favorites], S.plan, opts) : null;
+    S.arr = { sig, busy: false, result, why };
+    render();
+    document.getElementById("arr-result")?.focus();
+  }, 30);
+}
+
+function applyArrangement(plan) {
+  const before = S.plan;
+  let next = S.plan;
+  for (const p of plan.picks) next = choose(next, p).plan;
+  S.arr = null;
+  setPlan(next, `★の公演を${plan.picks.length}件、予定に入れました`, before);
+}
+
+function arrangeBox() {
+  const favs = [...S.favorites].filter((id) => byId.has(id));
+  const placed = new Set(S.plan.map((p) => p.showId));
+  const left = favs.filter((id) => !placed.has(id));
+  const box = h("section", { class: "arr", "aria-labelledby": "arr-h" });
+  box.append(h("h3", { id: "arr-h" }, "★から組む"));
+
+  if (!favs.length) {
+    box.append(h("p", { class: "arr-hint" }, "行きたい公演のカードで ☆ を押して印を付けると、回の組み合わせを考えて予定に入れられます。"));
+    return box;
+  }
+
+  const dayChecks = FES.days.map((d) =>
+    h("label", { class: "buy" },
+      h("input", {
+        type: "checkbox", checked: S.arrDays.has(d.id),
+        onchange: (e) => {
+          if (e.target.checked) S.arrDays.add(d.id);
+          else S.arrDays.delete(d.id);
+          render();
+        },
+      }), `${d.label}(${d.weekday})`));
+  const noDay = S.arrDays.size === 0;
+  box.append(
+    h("p", { class: "arr-hint" },
+      `★ ${favs.length}公演のうち、まだ予定に入っていないのは ${left.length}公演。`,
+      "入れてある予定は動かさずに、残りの時間へ割り振ります。"),
+    h("div", { class: "arr-row" },
+      h("span", { class: "arr-lbl" }, "使う日"), dayChecks,
+      h("button", {
+        type: "button", class: "btn primary", disabled: noDay || !left.length || S.arr?.busy,
+        onclick: runArrange,
+      }, S.arr?.busy ? "考え中…" : "組み合わせを考える"),
+    ),
+  );
+  if (noDay) box.append(h("p", { class: "err" }, "使う日を1つ以上選んでください。"));
+
+  const a = S.arr;
+  if (!a || a.busy) return box;
+  if (a.sig !== arrSig()) {
+    box.append(h("p", { class: "arr-hint" }, "予定や★が変わりました。もう一度「組み合わせを考える」を押してください。"));
+    return box;
+  }
+  const r = a.result;
+  const out = h("div", { class: "arr-out", id: "arr-result", tabindex: "-1", role: "region", "aria-label": "組み合わせの結果" });
+  box.append(out);
+
+  if (r.tooMany) {
+    out.append(h("p", { class: "err" }, `★が多すぎて組めません（${r.total}公演）。まだ予定に入っていない★を${MAX_WANT}公演までにしぼってください。`));
+    return box;
+  }
+  if (r.total === 0) {
+    out.append(h("p", null, "★の公演は、もう全部予定に入っています。"));
+    return box;
+  }
+
+  out.append(h("p", { class: "arr-sum" },
+    r.best === r.total ? `★${r.total}公演、全部入ります。` : `★${r.total}公演のうち、入るのは最大${r.best}公演です。`));
+
+  if (r.best < r.total && a.why) out.append(whyList(a.why, r));
+  if (r.truncated) out.append(h("p", { class: "arr-hint" }, "組み合わせが多いため、並べ方は一部を比べた中から選んでいます（入る公演数は最大です）。"));
+
+  r.plans.forEach((p, i) => {
+    const byDay = DAYS.filter((d) => p.picks.some((x) => x.day === d));
+    out.append(h("div", { class: "arr-plan" },
+      h("p", { class: "arr-ph" }, h("b", null, `案${i + 1}`), `　待ち時間 合計${dur(p.idle)}`),
+      byDay.map((d) => h("div", null,
+        DAYS.length > 1 ? h("p", { class: "arr-day" }, DAY_LABEL[d]) : null,
+        h("ul", null, p.picks.filter((x) => x.day === d).map((x) => {
+          const s = byId.get(x.showId);
+          return h("li", { style: floorStyle(s.floor) }, h("span", { class: "tm2" }, `${x.start}–${x.end}`), " ", s.title, " ",
+            h("span", { class: "sub" }, h("span", { class: "fl" }, FLOORS[s.floor].label), ` ${s.room}`));
+        })),
+      )),
+      p.missing.length ? h("p", { class: "arr-miss" }, `入らない：${p.missing.map((id) => byId.get(id).title).join("・")}`) : null,
+      h("button", { type: "button", class: "btn", onclick: () => applyArrangement(p) }, `案${i + 1}を予定に入れる`),
+    ));
+  });
+  out.append(h("button", { type: "button", class: "btn quiet", onclick: () => { S.arr = null; render(); } }, "結果を閉じる"));
+  return box;
+}
+
+function whyList(why, r) {
+  const t = (id) => byId.get(id).title;
+  const lines = [];
+  for (const id of why.noSlot) lines.push(`${t(id)}：選んだ日に回がありません`);
+  for (const x of why.blockedByFixed) lines.push(`${t(x.id)}：どの回も、入れてある「${x.with.map(nameOf).join("・")}」とぶつかります`);
+  if (why.dropOne.length) lines.push(`${why.dropOne.map(t).join("・")} のどれか1つをあきらめれば、残りは全部入ります`);
+  else if (r.best < r.total - why.noSlot.length - why.blockedByFixed.length) lines.push("★どうしの時間がぶつかっていて、1つあきらめるだけでは全部は入りません");
+  return h("ul", { class: "arr-why" }, lines.map((l) => h("li", null, l)));
+}
+
 function planPanel() {
   const day = S.day;
   const sum = summarize(S.plan, SHOWS);
@@ -508,6 +632,7 @@ function planPanel() {
         h("b", null, `${d.count}公演`), "・", h("b", null, yen(d.price)), `・謎解き ${dur(d.minutes)}`,
         sum.total.count ? `・購入済み ${sum.total.bought}/${sum.total.count}` : ""),
     ),
+    arrangeBox(),
     items.length ? tl : h("p", { class: "empty" }, "まだ予定がありません。公演の時刻を押すと、ここに入ります。"),
     h("p", { class: "both" }, `2日間：${both}・合計 ${yen(sum.total.price)}`),
     addForm(),
