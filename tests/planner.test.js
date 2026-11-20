@@ -10,6 +10,7 @@ import {
   festivalNow,
   nowNext,
   planToText,
+  slotFace,
 } from "../planner.js";
 
 const shows = [
@@ -69,6 +70,31 @@ describe("slotStatus", () => {
   it("自分で足した予定（ごはん等）とも重なりを見る", () => {
     const p = [{ day: "d1", start: "12:00", end: "13:00", label: "ごはん" }];
     expect(slotStatus(pick("c", "d1", "12:00"), p, 10).state).toBe("conflict");
+  });
+});
+
+describe("slotFace（回ボタンの見た目の種類と2行目の言葉）", () => {
+  const x = { start: "10:00", end: "11:00" };
+
+  it("状態ごとに種類と言葉が決まる", () => {
+    expect(slotFace({ state: "chosen" }, x)).toEqual({ kind: "chosen", word: "予定中" });
+    expect(slotFace({ state: "free" }, x)).toEqual({ kind: "free", word: "〜11:00" });
+    expect(slotFace({ state: "tight", gap: 5 }, x)).toEqual({ kind: "tight", word: "あき5分" });
+    expect(slotFace({ state: "conflict", with: [] }, x)).toEqual({ kind: "conflict", word: "重なる" });
+    expect(slotFace({ state: "moved" }, x)).toEqual({ kind: "moved", word: "入れ替え" });
+  });
+
+  it("空きで絞っていて外れる回は、状態より「時間外」を出す", () => {
+    expect(slotFace({ state: "conflict", with: [] }, x, { outside: true })).toEqual({ kind: "outside", word: "時間外" });
+    expect(slotFace({ state: "free" }, x, { outside: true })).toEqual({ kind: "outside", word: "時間外" });
+  });
+
+  it("選択中は空きの外でも選択中のまま", () => {
+    expect(slotFace({ state: "chosen" }, x, { outside: true }).kind).toBe("chosen");
+  });
+
+  it("特別回の札は、入る回の言葉として出す", () => {
+    expect(slotFace({ state: "free" }, x, { special: "初回" })).toEqual({ kind: "free", word: "初回" });
   });
 });
 
