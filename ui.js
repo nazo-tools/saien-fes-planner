@@ -585,6 +585,24 @@ function whyList(why, r) {
   return h("ul", { class: "arr-why" }, lines.map((l) => h("li", null, l)));
 }
 
+// 予定の上の数字。販売中は「あと何を買うか」が知りたいので、購入の進み具合と未購入の金額を出す
+function planStats(d) {
+  if (!d.count) return h("p", { class: "stats" }, "この日の公演はまだありません");
+  const rest = d.price - d.boughtPrice;
+  const pct = Math.round((d.bought / d.count) * 100);
+  return h("div", { class: "pstats" },
+    h("dl", { class: "tiles" },
+      h("div", null, h("dt", null, "公演"), h("dd", null, `${d.count}件`)),
+      h("div", null, h("dt", null, "合計"), h("dd", null, yen(d.price))),
+      h("div", null, h("dt", null, "購入済み"), h("dd", null, `${d.bought}`, h("small", null, `／${d.count}`))),
+    ),
+    h("div", { class: "bar", role: "img", "aria-label": `${d.count}件中${d.bought}件購入済み` }, h("i", { style: `width:${pct}%` })),
+    h("p", { class: "stats" },
+      rest ? h("b", null, `未購入 ${yen(rest)}（${d.count - d.bought}件）`) : h("b", { class: "done" }, "全部購入済み"),
+      `・謎解き ${dur(d.minutes)}`),
+  );
+}
+
 function planPanel() {
   const day = S.day;
   const sum = summarize(S.plan, SHOWS);
@@ -644,10 +662,8 @@ function planPanel() {
     h("div", { class: "plan-h" },
       h("h2", null, `${DAY_LABEL[day]}の予定`,
         h("button", { type: "button", class: "btn sheet-close", onclick: closeSheet }, "閉じる")),
-      h("p", { class: "stats" },
-        h("b", null, `${d.count}公演`), "・", h("b", null, yen(d.price)), `・謎解き ${dur(d.minutes)}`,
-        sum.total.count ? `・購入済み ${sum.total.bought}/${sum.total.count}` : ""),
     ),
+    planStats(d),
     arrangeBox(),
     items.length ? tl : h("p", { class: "empty" }, "まだ予定がありません。公演の時刻を押すと、ここに入ります。"),
     h("p", { class: "both" }, `2日間：${both}・合計 ${yen(sum.total.price)}`),

@@ -159,9 +159,19 @@ describe("summarize", () => {
       { day: "d1", start: "12:00", end: "13:00", label: "ごはん" },
     ];
     const s = summarize(plan, shows);
-    expect(s.days.d1).toEqual({ count: 1, price: 2000, minutes: 60 });
-    expect(s.days.d2).toEqual({ count: 1, price: 4000, minutes: 120 });
-    expect(s.total).toEqual({ count: 2, price: 6000, bought: 1 });
+    expect(s.days.d1).toEqual({ count: 1, price: 2000, minutes: 60, bought: 1, boughtPrice: 2000 });
+    expect(s.days.d2).toEqual({ count: 1, price: 4000, minutes: 120, bought: 0, boughtPrice: 0 });
+    expect(s.total).toEqual({ count: 2, price: 6000, bought: 1, boughtPrice: 2000 });
+  });
+
+  it("日ごとに、購入済みの件数と金額を数える（未購入の金額は price − boughtPrice）", () => {
+    const plan = [
+      { ...pick("a", "d1", "10:00"), bought: true },
+      { ...pick("b", "d1", "11:20") },
+    ];
+    const d1 = summarize(plan, shows).days.d1;
+    expect(d1).toMatchObject({ count: 2, price: 3500, bought: 1, boughtPrice: 2000 });
+    expect(d1.price - d1.boughtPrice).toBe(1500);
   });
 
   it("特別料金の回はその料金で数える", () => {
