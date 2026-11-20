@@ -13,7 +13,7 @@ import { toPlainScript, bundle } from "./tools/inline.mjs";
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (name) => readFileSync(join(root, name), "utf8");
 
-const SOURCES = ["shows.js", "planner.js", "storage.js", "ui.js"];
+const SOURCES = ["shows.js", "planner.js", "arrange.js", "storage.js", "ui.js"];
 const code = bundle(SOURCES.map((name) => ({ name, code: toPlainScript(read(name)) })));
 
 const html = read("index.html");
