@@ -133,13 +133,20 @@ select,input[type="search"],input[type="time"]{border:1px solid var(--line-stron
   box-shadow:var(--shadow);position:relative}
 .card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 3px 3px 0;background:var(--fc)}
 .card.has-pick{border-color:var(--accent)}
-.card-h{display:flex;gap:8px;align-items:flex-start}
-.card h3{margin:0;font-size:1rem;line-height:1.4;flex:1}
-.star{border:0;background:transparent;cursor:pointer;font-size:1.15rem;line-height:1;padding:2px 2px;color:var(--line-strong);min-width:32px;min-height:32px}
-.star[aria-pressed="true"]{color:#d9a106}
-.diff{flex:none;font-size:.75rem;border:1px solid var(--line-strong);border-radius:4px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+/* 上部は3行：①比べる数字（階・部屋・所要・料金・難易度） ②公演名と★ ③団体などの補足 */
+.card-h{display:flex;gap:8px;align-items:flex-start;margin-top:4px}
+.key{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:.78rem;color:var(--muted);line-height:1.5}
+.key .flc{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:20px;padding:0 5px;border-radius:4px;
+  background:var(--fc);color:var(--surface);font-size:.7rem;font-weight:700}
+.key .room{color:var(--ink);font-weight:700}
+.card h3{flex:1;min-width:0;margin:0;font-size:1rem;line-height:1.4;padding-top:3px}
+.card .meta{display:block;margin:2px 0 0;font-size:.75rem;color:var(--subtle);line-height:1.5}
+.star{flex:none;display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 6px;cursor:pointer;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--muted);font-size:.7rem;font-weight:700}
+.star span{font-size:1rem;line-height:1}
+.star[aria-pressed="true"]{border-color:#d9a106;color:var(--ink)}
+.star[aria-pressed="true"] span{color:#d9a106}
 .meta{margin:4px 0 0;font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
-.meta .fl{font-weight:700;color:var(--fc)}
 .tags{margin:4px 0 0;font-size:.75rem;color:var(--subtle)}
 .note{margin:6px 0 0;font-size:.75rem;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:3px 8px}
 /* 回ボタン：スマホは4列で幅をそろえ、広い画面はマス幅84pxで並べられるだけ並べる */
