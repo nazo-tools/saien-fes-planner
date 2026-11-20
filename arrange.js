@@ -18,6 +18,17 @@
 import { toMinutes } from "./planner.js";
 
 export const MAX_WANT = 20;
+
+/**
+ * ★の状態。count = データにある★の数、left = まだ予定に入っていない★の数。
+ * ready … 「★から組む」の入口を目立たせてよいか（★が2つ以上で、組む余地がある）
+ */
+export function favoriteState(favoriteIds, plan, knownIds) {
+  const favs = [...new Set(favoriteIds)].filter((id) => knownIds.has(id));
+  const placed = new Set(plan.map((p) => p.showId));
+  const left = favs.filter((id) => !placed.has(id)).length;
+  return { count: favs.length, left, ready: favs.length >= 2 && left >= 1 };
+}
 const DEFAULTS = { limit: 3, budgetMs: 600 };
 const INF = 32767;
 const T = 1500; // 分の表の長さ（0:00〜25:00）

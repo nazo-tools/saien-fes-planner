@@ -20,6 +20,7 @@
   --f11:#7b3fb3; --f2:#157a86; --f4:#8f5409;
   --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
   --ok:#1e6b48;
+  --star-soft:#fff6d6; --star-ink:#4d3800;
   --st-line:#7d889a;
   --st-tight-line:#b26a00; --st-tight-ink:#7a4500;
   --st-clash-a:#e4e8ee; --st-clash-b:#c9d0da; --st-clash-ink:#4a5566;
@@ -36,6 +37,7 @@
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --star-soft:#332a10; --star-ink:#f5dc8a;
   --st-line:#6b7789;
   --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
   --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
@@ -50,6 +52,7 @@
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --star-soft:#332a10; --star-ink:#f5dc8a;
   --st-line:#6b7789;
   --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
   --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
@@ -280,6 +283,15 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .both{padding:0 14px 12px;font-size:.78rem;color:var(--muted)}
 
 /* ---- ★から組む ---- */
+/* 一覧の先頭の案内。★が2つ以上で、まだ予定に入っていない★があるときだけ出す */
+.arrcta{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 12px;border:1px solid #d9a106;
+  background:var(--star-soft);border-radius:var(--radius);font-size:.85rem;line-height:1.5}
+.arrcta p{margin:0;flex:1;min-width:0;color:var(--star-ink)}
+.arrcta b{color:var(--ink)}
+.arrcta-star{flex:none;font-size:1.3rem;line-height:1;color:#d9a106}
+.btn.ink{flex:none;background:var(--ink);border-color:var(--ink);color:var(--surface);font-weight:700;min-height:40px}
+.arr:focus{outline:none}
+.arr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .arr{margin:10px 14px 4px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:10px 12px;background:var(--raised)}
 .arr h3{margin:0 0 4px;font-size:.9rem}
 .arr-hint{margin:0 0 8px;font-size:.78rem;color:var(--muted)}
@@ -1054,6 +1066,17 @@ function planToText(plan, shows, days) {
 
 
 const MAX_WANT = 20;
+
+/**
+ * ★の状態。count = データにある★の数、left = まだ予定に入っていない★の数。
+ * ready … 「★から組む」の入口を目立たせてよいか（★が2つ以上で、組む余地がある）
+ */
+function favoriteState(favoriteIds, plan, knownIds) {
+  const favs = [...new Set(favoriteIds)].filter((id) => knownIds.has(id));
+  const placed = new Set(plan.map((p) => p.showId));
+  const left = favs.filter((id) => !placed.has(id)).length;
+  return { count: favs.length, left, ready: favs.length >= 2 && left >= 1 };
+}
 const DEFAULTS = { limit: 3, budgetMs: 600 };
 const INF = 32767;
 const T = 1500; // 分の表の長さ（0:00〜25:00）
@@ -1844,6 +1867,7 @@ function listView() {
   return h("div", null,
     filters(),
     gapNote(),
+    arrangeCta(),
     h("p", { class: "count", role: "status" }, `${DAY_LABEL[S.day]} ${total}公演のうち ${shown.length}件`),
     shown.length
       ? h("div", { class: "cards" }, shown.map(card))
@@ -1945,6 +1969,30 @@ function runArrange() {
   }, 30);
 }
 
+// 一覧や下の帯の「★から組む」から来たとき。予定を開いて、組めるならそのまま計算まで進める
+function openArrange() {
+  const fs = favoriteState([...S.favorites], S.plan, byId);
+  if (!window.matchMedia("(min-width:960px)").matches) S.sheet = true;
+  const canRun = fs.left > 0 && S.arrDays.size > 0 && !S.arr?.busy;
+  if (canRun) runArrange();
+  else render();
+  const box = document.getElementById("arr");
+  box?.scrollIntoView({ block: "start" });
+  if (!canRun) box?.focus({ preventScroll: true });
+}
+
+function arrangeCta() {
+  const fs = favoriteState([...S.favorites], S.plan, byId);
+  if (!fs.ready) return null;
+  return h("section", { class: "arrcta", "aria-label": "★から組む" },
+    h("span", { class: "arrcta-star", "aria-hidden": "true" }, "★"),
+    h("p", null, h("b", null, `★ ${fs.count}公演`),
+      fs.left < fs.count ? `（まだ予定にないのは${fs.left}公演）` : "",
+      "を、重ならず待ち時間が少ない並べ方で最大3案つくれます"),
+    h("button", { type: "button", id: "arrcta-go", class: "btn ink", onclick: openArrange }, "★から組む"),
+  );
+}
+
 function applyArrangement(plan) {
   const before = S.plan;
   let next = S.plan;
@@ -1957,7 +2005,7 @@ function arrangeBox() {
   const favs = [...S.favorites].filter((id) => byId.has(id));
   const placed = new Set(S.plan.map((p) => p.showId));
   const left = favs.filter((id) => !placed.has(id));
-  const box = h("section", { class: "arr", "aria-labelledby": "arr-h" });
+  const box = h("section", { class: "arr", id: "arr", tabindex: "-1", "aria-labelledby": "arr-h" });
   box.append(h("h3", { id: "arr-h" }, "★から組む"));
 
   if (!favs.length) {
@@ -2227,8 +2275,10 @@ function copyLink() {
 function dock() {
   const sum = summarize(S.plan, SHOWS);
   const d = sum.days[S.day] ?? { count: 0, price: 0 };
+  const fs = favoriteState([...S.favorites], S.plan, byId);
   return h("div", { class: "dock" },
     h("div", { class: "sum" }, h("b", null, `${DAY_LABEL[S.day]} ${d.count}公演`), h("br"), `${yen(d.price)}・2日間で${sum.total.count}公演`),
+    fs.ready ? h("button", { type: "button", id: "dock-arr", class: "btn", onclick: openArrange }, "★から組む") : null,
     h("button", {
       type: "button", id: "open-plan", class: "btn primary", "aria-controls": "plan", "aria-expanded": String(S.sheet),
       onclick: () => { S.sheet = true; render(); document.querySelector("#plan .sheet-close")?.focus(); },
