@@ -17,7 +17,7 @@ import {
   nowNext,
   planToText,
 } from "./planner.js";
-import { arrange, explainMissing, MAX_WANT } from "./arrange.js";
+import { arrange, explainMissing, favoriteState, MAX_WANT } from "./arrange.js";
 import { loadState, saveState, encodePlan, decodePlan } from "./storage.js";
 
 const DAYS = FES.days.map((d) => d.id);
@@ -392,6 +392,7 @@ function listView() {
   return h("div", null,
     filters(),
     gapNote(),
+    arrangeCta(),
     h("p", { class: "count", role: "status" }, `${DAY_LABEL[S.day]} ${total}公演のうち ${shown.length}件`),
     shown.length
       ? h("div", { class: "cards" }, shown.map(card))
@@ -485,6 +486,30 @@ function runArrange() {
   }, 30);
 }
 
+// 一覧や下の帯の「★から組む」から来たとき。予定を開いて、組めるならそのまま計算まで進める
+function openArrange() {
+  const fs = favoriteState([...S.favorites], S.plan, byId);
+  if (!window.matchMedia("(min-width:960px)").matches) S.sheet = true;
+  const canRun = fs.left > 0 && S.arrDays.size > 0 && !S.arr?.busy;
+  if (canRun) runArrange();
+  else render();
+  const box = document.getElementById("arr");
+  box?.scrollIntoView({ block: "start" });
+  if (!canRun) box?.focus({ preventScroll: true });
+}
+
+function arrangeCta() {
+  const fs = favoriteState([...S.favorites], S.plan, byId);
+  if (!fs.ready) return null;
+  return h("section", { class: "arrcta", "aria-label": "★から組む" },
+    h("span", { class: "arrcta-star", "aria-hidden": "true" }, "★"),
+    h("p", null, h("b", null, `★ ${fs.count}公演`),
+      fs.left < fs.count ? `（まだ予定にないのは${fs.left}公演）` : "",
+      "を、重ならず待ち時間が少ない並べ方で最大3案つくれます"),
+    h("button", { type: "button", id: "arrcta-go", class: "btn ink", onclick: openArrange }, "★から組む"),
+  );
+}
+
 function applyArrangement(plan) {
   const before = S.plan;
   let next = S.plan;
@@ -497,7 +522,7 @@ function arrangeBox() {
   const favs = [...S.favorites].filter((id) => byId.has(id));
   const placed = new Set(S.plan.map((p) => p.showId));
   const left = favs.filter((id) => !placed.has(id));
-  const box = h("section", { class: "arr", "aria-labelledby": "arr-h" });
+  const box = h("section", { class: "arr", id: "arr", tabindex: "-1", "aria-labelledby": "arr-h" });
   box.append(h("h3", { id: "arr-h" }, "★から組む"));
 
   if (!favs.length) {
@@ -767,8 +792,10 @@ function copyLink() {
 function dock() {
   const sum = summarize(S.plan, SHOWS);
   const d = sum.days[S.day] ?? { count: 0, price: 0 };
+  const fs = favoriteState([...S.favorites], S.plan, byId);
   return h("div", { class: "dock" },
     h("div", { class: "sum" }, h("b", null, `${DAY_LABEL[S.day]} ${d.count}公演`), h("br"), `${yen(d.price)}・2日間で${sum.total.count}公演`),
+    fs.ready ? h("button", { type: "button", id: "dock-arr", class: "btn", onclick: openArrange }, "★から組む") : null,
     h("button", {
       type: "button", id: "open-plan", class: "btn primary", "aria-controls": "plan", "aria-expanded": String(S.sheet),
       onclick: () => { S.sheet = true; render(); document.querySelector("#plan .sheet-close")?.focus(); },

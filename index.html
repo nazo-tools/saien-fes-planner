@@ -20,6 +20,7 @@
   --f11:#7b3fb3; --f2:#157a86; --f4:#8f5409;
   --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
   --ok:#1e6b48;
+  --star-soft:#fff6d6; --star-ink:#4d3800;
   --st-line:#7d889a;
   --st-tight-line:#b26a00; --st-tight-ink:#7a4500;
   --st-clash-a:#e4e8ee; --st-clash-b:#c9d0da; --st-clash-ink:#4a5566;
@@ -36,6 +37,7 @@
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --star-soft:#332a10; --star-ink:#f5dc8a;
   --st-line:#6b7789;
   --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
   --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
@@ -50,6 +52,7 @@
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
+  --star-soft:#332a10; --star-ink:#f5dc8a;
   --st-line:#6b7789;
   --st-tight-line:#e0a040; --st-tight-ink:#f0b75c;
   --st-clash-a:#202733; --st-clash-b:#2f3846; --st-clash-ink:#b0b9c6;
@@ -267,6 +270,15 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .both{padding:0 14px 12px;font-size:.78rem;color:var(--muted)}
 
 /* ---- ★から組む ---- */
+/* 一覧の先頭の案内。★が2つ以上で、まだ予定に入っていない★があるときだけ出す */
+.arrcta{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 12px;border:1px solid #d9a106;
+  background:var(--star-soft);border-radius:var(--radius);font-size:.85rem;line-height:1.5}
+.arrcta p{margin:0;flex:1;min-width:0;color:var(--star-ink)}
+.arrcta b{color:var(--ink)}
+.arrcta-star{flex:none;font-size:1.3rem;line-height:1;color:#d9a106}
+.btn.ink{flex:none;background:var(--ink);border-color:var(--ink);color:var(--surface);font-weight:700;min-height:40px}
+.arr:focus{outline:none}
+.arr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .arr{margin:10px 14px 4px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:10px 12px;background:var(--raised)}
 .arr h3{margin:0 0 4px;font-size:.9rem}
 .arr-hint{margin:0 0 8px;font-size:.78rem;color:var(--muted)}

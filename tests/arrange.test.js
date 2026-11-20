@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { arrange, explainMissing } from "../arrange.js";
+import { arrange, explainMissing, favoriteState } from "../arrange.js";
 import { SHOWS } from "../shows.js";
 import { slotStatus } from "../planner.js";
 
@@ -121,5 +121,27 @@ describe("explainMissing", () => {
   it("どれか1つをあきらめれば残りが全部入るなら、その公演を dropOne に挙げる", () => {
     const shows = [show("a", "10:00-12:00"), show("b", "11:00-12:00"), show("c", "14:00-15:00")];
     expect(explainMissing(shows, ["a", "b", "c"], [], OPTS).dropOne.sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("favoriteState（★から組むの入口を出すか）", () => {
+  const known = new Set(["a", "b", "c"]);
+  const plan = [{ showId: "a", day: "d1", start: "10:00", end: "11:00" }, { day: "d1", start: "12:00", end: "13:00", label: "ごはん" }];
+
+  it("★の数と、まだ予定に入っていない★の数を返す", () => {
+    expect(favoriteState(["a", "b", "c"], plan, known)).toEqual({ count: 3, left: 2, ready: true });
+  });
+
+  it("★が1つだけなら入口は出さない", () => {
+    expect(favoriteState(["b"], [], known).ready).toBe(false);
+  });
+
+  it("★が全部予定に入っていれば入口は出さない", () => {
+    expect(favoriteState(["a"], plan, known)).toEqual({ count: 1, left: 0, ready: false });
+    expect(favoriteState(["a", "a"], plan, known).ready).toBe(false);
+  });
+
+  it("データにない公演の★は数えない（古い保存データ対策）", () => {
+    expect(favoriteState(["b", "zz"], [], known)).toEqual({ count: 1, left: 1, ready: false });
   });
 });
