@@ -1,0 +1,1762 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>最宴祭プランナー</title>
+<style>
+/* 色の役割
+   --accent  : 自分が選んだもの（予定に入っている回）
+   --f11/--f2/--f4 : 階。カードの印と時間割の列見出しにだけ使う
+   --warn    : 入るけれど移動がきつい
+   重なる回は色を足さず、薄くして線で消す */
+:root{
+  color-scheme:light dark;
+  --bg:#eef1f5; --surface:#fff; --sunken:#e4e8ee; --raised:#f7f9fb;
+  --ink:#141b26; --muted:#4a5566; --subtle:#6b7687;
+  --line:#d3d9e2; --line-strong:#b9c2ce;
+  --accent:#c62f3b; --accent-ink:#fff; --accent-soft:#fbe9ea;
+  --f11:#7b3fb3; --f2:#157a86; --f4:#a8650b;
+  --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
+  --ok:#1e6b48;
+  --radius:6px;
+  --shadow:0 1px 2px rgba(20,27,38,.06),0 2px 8px rgba(20,27,38,.05);
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
+  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#8d97a6;
+  --line:#2e3744; --line-strong:#3f4a5a;
+  --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
+  --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
+  --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
+  --ok:#6fd0a0;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
+  --ink:#e9edf3; --muted:#b0b9c6; --subtle:#8d97a6;
+  --line:#2e3744; --line-strong:#3f4a5a;
+  --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
+  --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
+  --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
+  --ok:#6fd0a0;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;
+  font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:where(button,input,select,summary,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+a{color:inherit}
+
+/* ---- 上部 ---- */
+.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1280px;margin:0 auto;padding:10px 16px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.brand{display:flex;align-items:baseline;gap:8px;margin-right:auto}
+.brand h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:.06em}
+.brand span{font-size:.75rem;color:var(--subtle)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius);overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;cursor:pointer;font-size:.85rem;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);font-weight:700}
+.field{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+select,input[type="search"],input[type="time"]{border:1px solid var(--line-strong);border-radius:var(--radius);
+  background:var(--surface);padding:5px 8px;font-size:.85rem;min-height:34px}
+
+/* ---- 当日・共有のお知らせ ---- */
+.banner{max-width:1280px;margin:10px auto 0;padding:0 16px}
+.banner > div{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);padding:10px 12px;
+  display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:.88rem}
+.banner .now b{color:var(--accent)}
+.banner .shared{border-color:var(--accent)}
+.banner pre{margin:0;font:inherit;font-size:.8rem;color:var(--muted);white-space:pre-wrap;flex-basis:100%}
+
+/* ---- 本体 ---- */
+.layout{max-width:1280px;margin:0 auto;padding:12px 16px 96px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media (min-width:960px){
+  .layout{grid-template-columns:minmax(0,1fr) 380px;padding-bottom:32px}
+}
+
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tools input[type="search"]{flex:1 1 180px;min-width:0}
+.chipset{display:flex;flex-wrap:wrap;gap:6px}
+.toggle{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);padding:5px 10px;
+  font-size:.8rem;cursor:pointer;color:var(--muted);min-height:34px}
+.toggle[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.count{font-size:.8rem;color:var(--subtle);margin:0 0 8px}
+.gapnote{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--accent);
+  background:var(--accent-soft);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:.88rem}
+.btn{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);padding:6px 12px;
+  cursor:pointer;font-size:.85rem;min-height:34px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted);text-decoration:underline;padding:6px 4px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---- 公演カード ---- */
+.cards{display:grid;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px 12px 16px;
+  box-shadow:var(--shadow);position:relative}
+.card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 3px 3px 0;background:var(--fc)}
+.card.has-pick{border-color:var(--accent)}
+.card-h{display:flex;gap:8px;align-items:flex-start}
+.card h3{margin:0;font-size:1rem;line-height:1.4;flex:1}
+.star{border:0;background:transparent;cursor:pointer;font-size:1.15rem;line-height:1;padding:2px 2px;color:var(--line-strong);min-width:32px;min-height:32px}
+.star[aria-pressed="true"]{color:#d9a106}
+.diff{flex:none;font-size:.75rem;border:1px solid var(--line-strong);border-radius:4px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+.meta{margin:4px 0 0;font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.meta .fl{font-weight:700;color:var(--fc)}
+.tags{margin:4px 0 0;font-size:.75rem;color:var(--subtle)}
+.note{margin:6px 0 0;font-size:.75rem;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:3px 8px}
+.slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.slot{border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--radius);
+  padding:4px 8px;font-size:.82rem;cursor:pointer;min-height:34px;min-width:58px;line-height:1.15;text-align:center}
+.slot small{display:block;font-size:.66rem;color:var(--subtle)}
+.slot:hover{border-color:var(--ink)}
+.slot.chosen{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.slot.chosen small{color:var(--accent-ink);opacity:.85}
+.slot.tight{border-style:dashed;border-color:var(--warn-line);background:var(--warn-bg)}
+.slot.tight small{color:var(--warn)}
+.slot.moved{border-style:dotted}
+.slot.conflict{color:var(--muted);background:var(--sunken);border-color:var(--line);text-decoration:line-through}
+.slot.conflict small{text-decoration:none}
+.slot.outside{opacity:.55}
+.none{padding:24px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.72rem;color:var(--subtle);margin:0 0 8px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;border:1px solid var(--line-strong);vertical-align:-1px;margin-right:4px}
+.legend .l-chosen{background:var(--accent);border-color:var(--accent)}
+.legend .l-tight{background:var(--warn-bg);border:1px dashed var(--warn-line)}
+.legend .l-conflict{background:var(--sunken)}
+
+/* ---- 予約不要 ---- */
+details.walk{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+details.walk summary{cursor:pointer;padding:10px 14px;font-weight:700;font-size:.9rem}
+.walk ul{list-style:none;margin:0;padding:0 14px 12px;display:grid;gap:8px}
+.walk li{border-top:1px solid var(--line);padding-top:8px;font-size:.82rem}
+.walk li b{font-size:.9rem}
+.walk .meta{margin-top:2px}
+
+/* ---- 時間割 ---- */
+.grid-wrap{overflow:auto;max-height:calc(100dvh - 180px);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.grid{position:relative;display:grid;grid-template-columns:48px repeat(var(--cols),118px);min-width:max-content}
+.gh{position:sticky;top:0;z-index:3;background:var(--surface);border-bottom:1px solid var(--line-strong);
+  border-left:1px solid var(--line);padding:6px 6px;font-size:.7rem;line-height:1.3;height:64px;overflow:hidden}
+.gh b{display:block;font-size:.74rem;color:var(--fc)}
+.gh.corner{left:0;z-index:4;border-left:0}
+.gcol{position:relative;border-left:1px solid var(--line);height:var(--h)}
+.gaxis{position:sticky;left:0;z-index:2;background:var(--surface);height:var(--h);border-right:1px solid var(--line-strong)}
+.gaxis span{position:absolute;right:6px;font-size:.68rem;color:var(--subtle);transform:translateY(-50%)}
+.hline{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}
+.hline.half{border-top-style:dotted}
+.gb{position:absolute;left:3px;right:3px;border:1px solid var(--line-strong);border-radius:4px;background:var(--raised);
+  font-size:.68rem;line-height:1.2;padding:2px 4px;cursor:pointer;overflow:hidden;text-align:left}
+.gb:hover{border-color:var(--ink);z-index:1}
+.gb.chosen{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.gb.tight{background:var(--warn-bg);border:1px dashed var(--warn-line)}
+.gb.conflict{background:var(--sunken);color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.gb.outside{opacity:.5}
+
+/* ---- 予定 ---- */
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+@media (min-width:960px){
+  .plan{position:sticky;top:76px;max-height:calc(100dvh - 92px);overflow:auto}
+  .sheet-close,.dock{display:none !important}
+}
+@media (max-width:959px){
+  .plan{position:fixed;inset:0;z-index:40;border-radius:0;overflow:auto;display:none;padding-bottom:24px}
+  .plan.open{display:block}
+}
+.plan-h{position:sticky;top:0;background:var(--surface);z-index:1;padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+.plan-h h2{margin:0;font-size:1rem;display:flex;align-items:center;gap:8px}
+.plan-h h2 .sheet-close{margin-left:auto}
+.stats{margin:4px 0 0;font-size:.8rem;color:var(--muted)}
+.stats b{color:var(--ink)}
+.tl{list-style:none;margin:0;padding:8px 14px}
+.it{display:grid;grid-template-columns:52px 1fr auto;gap:2px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.it:first-child{border-top:0}
+.it .tm{font-weight:700;font-size:.9rem;line-height:1.25}
+.it .tm small{display:block;font-weight:400;color:var(--subtle);font-size:.75rem}
+.it .ti{font-weight:700;font-size:.9rem;line-height:1.35}
+.it .sub{font-size:.75rem;color:var(--muted)}
+.it .sub .fl{font-weight:700;color:var(--fc)}
+.it .hall{font-size:.72rem;color:var(--warn)}
+.it .acts{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.it.mine .ti{font-weight:400}
+.buy{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted);cursor:pointer;white-space:nowrap}
+.buy input{width:16px;height:16px;accent-color:var(--ok)}
+.it.bought .ti::after{content:"購入済み";margin-left:6px;font-size:.66rem;font-weight:700;color:var(--ok);border:1px solid var(--ok);border-radius:3px;padding:0 4px;vertical-align:2px}
+.rm{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:.75rem;text-decoration:underline;padding:4px 6px;min-height:28px;min-width:40px}
+.gap{list-style:none;padding:2px 0 2px 62px;font-size:.78rem;color:var(--subtle)}
+.gap.warn{color:var(--warn);font-weight:700}
+.gap .find{border:1px dashed var(--line-strong);background:transparent;border-radius:var(--radius);padding:6px 10px;
+  cursor:pointer;color:var(--muted);font-size:.78rem;width:100%;text-align:left;margin:4px 0}
+.gap .find:hover,.gap .find[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);border-style:solid}
+.empty{padding:16px 14px;color:var(--muted);font-size:.88rem}
+.addform{border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.addform legend{font-size:.8rem;font-weight:700;padding:0;margin-bottom:4px}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+.addform .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.addform .err{flex-basis:100%;color:var(--accent);font-size:.78rem;margin:2px 0 0}
+.plan-f{border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.both{padding:0 14px 12px;font-size:.78rem;color:var(--muted)}
+
+/* ---- スマホの下の帯 ---- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line-strong);
+  padding:8px 16px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px}
+.dock .sum{flex:1;font-size:.8rem;color:var(--muted);line-height:1.3}
+.dock .sum b{color:var(--ink);font-size:.95rem}
+
+/* ---- お知らせ ---- */
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:50;background:var(--ink);color:var(--surface);
+  border-radius:var(--radius);padding:8px 10px 8px 14px;font-size:.85rem;display:flex;gap:10px;align-items:center;
+  max-width:calc(100vw - 32px);box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.toast[hidden]{display:none}
+.toast button{border:1px solid currentColor;background:transparent;color:inherit;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:.8rem}
+@media (min-width:960px){.toast{bottom:24px}}
+
+.foot{max-width:1280px;margin:0 auto;padding:0 16px 24px;font-size:.72rem;color:var(--subtle)}
+.foot p{margin:0 0 4px}
+
+@media (prefers-reduced-motion:no-preference){
+  .slot,.btn,.toggle,.gb{transition:border-color .12s,background-color .12s}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+"use strict";
+
+/* ===== shows.js ===== */
+// 東京最宴祭3（2026/12/12土・12/13日 街ハック！本社）の公演データ。
+//
+// 出典: 公式HPのタイムテーブルPDF（TT1日目.pdf / TT2日目.pdf）と
+// 「事前予約不要で遊べるコンテンツ」PDF。https://sites.google.com/view/t-saien3
+//
+// 回の時刻は、PDFを画像にして枠の上端・下端の位置から読み取った（tools/detect_slots.py）。
+// 全列で「枠の数 = 公演数」「枠の長さ = 所要時間」を確かめ、何か所かは枠内の文字とも突き合わせた。
+// tests/shows.test.js が同じ検算をしている。
+
+const FES = {
+  title: "東京最宴祭3",
+  place: "街ハック！本社",
+  year: 2026,
+  url: "https://sites.google.com/view/t-saien3",
+  ticketUrl: "https://escape.id/t-saienfes-org/e-3-1212-13/",
+  days: [
+    { id: "12-12", label: "12/12", weekday: "土" },
+    { id: "12-13", label: "12/13", weekday: "日" },
+  ],
+};
+
+const FLOORS = {
+  "11F": { label: "11階", note: "ホール公演は開始時刻に1Fに集合" },
+  "2F": { label: "2階" },
+  "4F": { label: "4階" },
+};
+
+const D1 = "12-12";
+const D2 = "12-13";
+
+/** "10:00-11:00 12:00-13:00" → [{start,end}, ...] */
+const t = (s) =>
+  s
+    .trim()
+    .split(/\s+/)
+    .map((p) => {
+      const [start, end] = p.split("-");
+      return { start, end };
+    });
+
+// room: 部屋の表記。floor: 階。
+// slots: 日ごとの回。count: タイムテーブルに書かれた公演数（検算用）。
+// difficulty: 10段階（"-" は null）。
+const SHOWS = [
+  // ---------------------------------------------------------------- 11階 ホール
+  {
+    id: "lixit-mokushiroku", group: "X LixiT", title: "禁じられた館と終末を記した黙示録",
+    floor: "11F", room: "ホール①", format: "ホール型", run: "再演/東京初演",
+    difficulty: 8, tags: ["謎解きに慣れた方向け", "物量多め"],
+    people: "4人×4チーム", durationMin: 120, price: 4000,
+    slots: { [D1]: t("12:30-14:30 15:00-17:00") }, count: { [D1]: 2 },
+  },
+  {
+    id: "lixit-k", group: "X LixiT", title: "K",
+    floor: "11F", room: "ホール①", format: "スタジアム型", run: "再演/東京初演",
+    difficulty: 6, tags: ["王道", "ワチャワチャ系"],
+    people: "40人", durationMin: 150, price: 4000,
+    slots: { [D2]: t("10:00-12:30 13:30-16:00 17:00-19:30") }, count: { [D2]: 3 },
+  },
+  {
+    id: "escaplugged", group: "EscaPLUGGED", title: "虚に生まれ、光に還るもの",
+    floor: "11F", room: "ホール②", format: "ホール型", run: "再演",
+    difficulty: 7, tags: ["王道", "謎解きに慣れた方向け"],
+    people: "4人×6チーム", durationMin: 120, price: 3000,
+    slots: { [D1]: t("10:00-12:00 12:30-14:30 15:00-17:00") }, count: { [D1]: 3 },
+  },
+  {
+    id: "bx-universus", group: "B[]X", title: "UNI-VERS-US",
+    floor: "11F", room: "ホール②", format: "ホール型", run: "再演/東京初演",
+    difficulty: 9, tags: ["謎解きに慣れた方向け", "物量多め"],
+    people: "4人×4チーム", durationMin: 150, price: 4000,
+    slots: { [D2]: t("10:00-12:30 13:30-16:00 17:00-19:30") }, count: { [D2]: 3 },
+  },
+  {
+    id: "tokesou2", group: "メロディラビリンス", title: "ほぼ謎解きショップ The トケソー2",
+    floor: "11F", room: "ホール③", format: "ホール型", run: "新作",
+    difficulty: 7, tags: ["謎解きに慣れた方向け"],
+    people: "4人×5チーム", durationMin: 120, price: 3500,
+    slots: { [D1]: t("10:00-12:00 12:30-14:30 15:00-17:00") }, count: { [D1]: 3 },
+  },
+  {
+    id: "nazotoki1gp", group: "Quattrophy", title: "NAZOTOKI-1グランプリからの脱出",
+    floor: "11F", room: "ホール③", format: "ホール型", run: "新作",
+    difficulty: 7, tags: ["謎解きに慣れた方向け", "わいわい"],
+    people: "4人×6チーム", durationMin: 150, price: 3500,
+    slots: { [D2]: t("10:00-12:30 13:30-16:00 17:00-19:30") }, count: { [D2]: 3 },
+  },
+  {
+    id: "owarai-live6", group: "グータン森山", title: "謎を解かないと帰れないお笑いライブ6",
+    floor: "11F", room: "ホール④", format: "ホール型", run: "新作",
+    difficulty: 6, tags: ["ワチャワチャ系", "初心者歓迎"],
+    people: "150人", durationMin: 120, price: 3000,
+    slots: { [D1]: t("18:00-20:00") }, count: { [D1]: 1 },
+  },
+
+  // ---------------------------------------------------------------- 2階 応接室・201〜205
+  {
+    id: "kyonshi", group: "成田高校クイズ研究部", title: "どきどき！キョンシー迫る館からの脱出",
+    floor: "2F", room: "応接室2E キレイキレイ", format: "ホール型", run: "再演",
+    difficulty: 4, tags: ["王道", "ワチャワチャ系", "初心者歓迎"],
+    people: "4人×2チーム", durationMin: 60, price: 2000,
+    slots: {
+      [D1]: t("10:30-11:30 12:00-13:00 14:00-15:00 15:30-16:30 17:00-18:00 18:30-19:30"),
+      [D2]: t("10:30-11:30 12:00-13:00 14:00-15:00 15:30-16:30 17:00-18:00 18:30-19:30"),
+    },
+    count: { [D1]: 6, [D2]: 6 },
+  },
+  {
+    id: "nazoreversi", group: "moju", title: "わちゃわちゃ！ナゾリバーシ",
+    floor: "2F", room: "応接室2F NANOX", format: "ホール型", run: "再演/東京初演",
+    difficulty: 7, tags: ["ワチャワチャ系", "スコアアタック", "小謎多め"],
+    people: "2人×4チーム（ペア限定）", durationMin: 70, price: 2500,
+    note: "チケット1枚で2名分（同行者の枠消費なし）",
+    slots: { [D1]: t("10:00-11:10 11:30-12:40 14:20-15:30 15:50-17:00 17:20-18:30 18:50-20:00") },
+    count: { [D1]: 6 },
+  },
+  {
+    id: "chokichoki", group: "teaparty", title: "チョキチョキピースリドル",
+    floor: "2F", room: "応接室2F NANOX", format: "ホール型", run: "再演/東京初演",
+    difficulty: 6, tags: ["ワチャワチャ系", "謎解きに慣れた方向け", "ペア謎"],
+    people: "2人×4チーム（ペア限定）", durationMin: 55, price: 1700,
+    note: "チケット1枚で2名分（同行者の枠消費なし）",
+    slots: { [D2]: t("10:00-10:55 11:15-12:10 12:30-13:25 13:45-14:40 15:15-16:10 16:30-17:25 17:45-18:40 19:00-19:55") },
+    count: { [D2]: 8 },
+  },
+  {
+    id: "hyakunin", group: "ナゾトキズナ", title: "ひゃくにんとともだちになろう",
+    floor: "2F", room: "応接室2G ソフラン", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 8, tags: ["物量多め", "難易度高め", "アイテムを使って解く謎解き"],
+    people: "4人（最少催行3人）", durationMin: 95, price: 2500,
+    slots: { [D1]: t("10:00-11:35 12:05-13:40 14:10-15:45 16:15-17:50 18:20-19:55") }, count: { [D1]: 5 },
+  },
+  {
+    id: "kanda", group: "Kanda", title: "カンダのエクセレントえっくす教室",
+    floor: "2F", room: "応接室2G ソフラン", format: "ルーム型", run: "再演",
+    difficulty: 4, tags: ["スコアアタック", "ネットミーム", "ぬるぽ"],
+    people: "4人", durationMin: 65, price: 2000,
+    slots: { [D2]: t("10:00-11:05 11:30-12:35 13:00-14:05 14:30-15:35 16:00-17:05 17:30-18:35 18:55-20:00") },
+    count: { [D2]: 7 },
+  },
+  {
+    id: "etlange", group: "Unorthodox", title: "étlange",
+    floor: "2F", room: "201 チェックアップ", format: "ルーム型", run: "再演",
+    difficulty: null, tags: ["言語解読"],
+    people: "4人（最少催行2人）", durationMin: 80, price: 3100,
+    slots: {
+      [D1]: t("10:10-11:30 11:50-13:10 13:30-14:50 15:10-16:30 16:50-18:10 18:30-19:50"),
+      [D2]: t("10:10-11:30 11:50-13:10 13:30-14:50 15:10-16:30 16:50-18:10 18:30-19:50"),
+    },
+    count: { [D1]: 6, [D2]: 6 },
+  },
+  {
+    id: "monodarake6", group: "TKGデラックス", title: "ものだらけⅥ",
+    floor: "2F", room: "202 スマイル", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 6, tags: ["ワチャワチャ系", "タイムアタック", "物量多め（物理）"],
+    people: "8人", durationMin: 45, price: 3000,
+    slots: { [D1]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:00-13:45 14:00-14:45 15:00-15:45 16:00-16:45 17:00-17:45 18:00-18:45 19:00-19:45") },
+    count: { [D1]: 10 },
+  },
+  {
+    id: "word-museum", group: "TKGデラックス", title: "ワードミュージアム 漫画編",
+    floor: "2F", room: "202 スマイル", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 3, tags: ["ワチャワチャ系", "タイムアタック", "言葉遊び"],
+    people: "6人", durationMin: 30, price: 2500,
+    slots: { [D2]: t("10:00-10:30 10:40-11:10 11:20-11:50 12:00-12:30 12:40-13:10 13:20-13:50 14:00-14:30 14:40-15:10 15:20-15:50 16:00-16:30 16:40-17:10 17:20-17:50 18:00-18:30 18:40-19:10 19:20-19:50") },
+    count: { [D2]: 15 },
+  },
+  {
+    id: "cube-world", group: "ミステリーケーキ", title: "ひらめきキューブワールド",
+    floor: "2F", room: "203 バファリン", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 7, tags: ["王道", "ワチャワチャ系", "謎解きに慣れた方向け"],
+    people: "4人", durationMin: 40, price: 2500,
+    slots: {
+      [D1]: t("10:00-10:40 11:00-11:40 12:00-12:40 13:00-13:40 14:00-14:40 15:00-15:40 16:00-16:40 17:00-17:40 18:00-18:40 19:00-19:40"),
+      [D2]: t("10:00-10:40 11:00-11:40 12:00-12:40 13:00-13:40 14:00-14:40 15:00-15:40 16:00-16:40 17:00-17:40 18:00-18:40 19:00-19:40"),
+    },
+    count: { [D1]: 10, [D2]: 10 },
+  },
+  {
+    id: "unclear", group: "きごまや", title: "UNCLEAR",
+    floor: "2F", room: "204 アクロン", format: "ルーム型", run: "新作",
+    difficulty: 4, tags: ["王道", "メタ"],
+    people: "4人", durationMin: 80, price: 2000,
+    slots: { [D1]: t("10:00-11:20 12:00-13:20 14:00-15:20 16:00-17:20 18:00-19:20") }, count: { [D1]: 5 },
+  },
+  {
+    id: "sindbad", group: "ナゾトキ番長", title: "シンドバッドと無限の宝物庫",
+    floor: "2F", room: "204 アクロン", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 5, tags: ["王道", "スコアアタック", "物量多め"],
+    people: "4人", durationMin: 45, price: 2500,
+    slots: { [D2]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:00-13:45 14:30-15:15 15:30-16:15 16:30-17:15 18:00-18:45 19:00-19:45") },
+    count: { [D2]: 9 },
+  },
+  {
+    id: "theres-answer", group: "Leia", title: "There's Answer",
+    floor: "2F", room: "205 チャーミー", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 6, tags: ["スコアアタック", "タイムアタック", "物量多め"],
+    people: "4人", durationMin: 70, price: 3000,
+    slots: {
+      [D1]: t("10:00-11:10 11:20-12:30 12:40-13:50 14:30-15:40 15:50-17:00 17:10-18:20 18:40-19:50"),
+      [D2]: t("10:00-11:10 11:20-12:30 12:40-13:50 14:30-15:40 15:50-17:00 17:10-18:20 18:40-19:50"),
+    },
+    count: { [D1]: 7, [D2]: 7 },
+  },
+
+  // ---------------------------------------------------------------- 2階 206〜213
+  {
+    id: "vs", group: "Melt", title: "VS",
+    floor: "2F", room: "206 ルック", format: "ホール型", run: "再演/東京初演",
+    difficulty: 7, tags: ["王道", "ワチャワチャ系", "持ち帰り謎付き"],
+    people: "4人×2チーム", durationMin: 95, price: 3500,
+    slots: {
+      [D1]: t("11:00-12:35 13:15-14:50 15:30-17:05 17:45-19:20"),
+      [D2]: t("10:00-11:35 12:15-13:50 14:30-16:05 16:45-18:20"),
+    },
+    count: { [D1]: 4, [D2]: 4 },
+  },
+  {
+    id: "stop", group: "Ereka", title: "STOP!!!",
+    floor: "2F", room: "207 ブリリアント", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 7, tags: ["ワチャワチャ系", "スコアアタック", "謎解きに慣れた方向け"],
+    people: "3人（最少催行2人）", durationMin: 45, price: 2000,
+    slots: {
+      [D1]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:15-14:00 14:15-15:00 15:15-16:00 16:15-17:00 17:15-18:00 18:15-19:00 19:15-20:00"),
+      [D2]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:15-14:00 14:15-15:00 15:15-16:00 16:15-17:00 17:15-18:00 18:15-19:00 19:15-20:00"),
+    },
+    count: { [D1]: 10, [D2]: 10 },
+  },
+  {
+    id: "endless-train", group: "ネコノヨスガ", title: "ENDLESS TRAIN",
+    floor: "2F", room: "208 ペットキッス", format: "プレミアムホール型", run: "再演/東京初演",
+    difficulty: 8, tags: ["王道", "謎解きに慣れた方向け", "物量多め"],
+    people: "4人×1チーム", durationMin: 95, price: 3000,
+    slots: {
+      [D1]: t("10:00-11:35 12:45-14:20 15:30-17:05 18:15-19:50"),
+      [D2]: t("10:00-11:35 12:45-14:20 15:30-17:05 18:15-19:50"),
+    },
+    count: { [D1]: 4, [D2]: 4 },
+  },
+  {
+    id: "select-word", group: "RIDDLE STORY", title: "セレクトワード リメイクVer.",
+    floor: "2F", room: "209 ハピ丸", format: "ルーム型", run: "新作",
+    difficulty: 7, tags: ["王道", "謎解きに慣れた方向け", "物量多め"],
+    people: "4人", durationMin: 45, price: 2000,
+    slots: {
+      [D1]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:00-13:45 14:00-14:45 15:00-15:45 16:00-16:45 17:00-17:45 18:00-18:45 19:00-19:45"),
+      [D2]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:00-13:45 14:00-14:45 15:00-15:45 16:00-16:45 17:00-17:45 18:00-18:45 19:00-19:45"),
+    },
+    count: { [D1]: 10, [D2]: 10 },
+  },
+  {
+    id: "shibutsu", group: "CrossXOne", title: "私物の使用は可能です",
+    floor: "2F", room: "210 ペットキレイ", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 5, tags: ["ワチャワチャ系"],
+    people: "4人", durationMin: 50, price: 2000,
+    slots: {
+      [D1]: t("10:00-10:50 11:10-12:00 12:20-13:10 13:25-14:15 14:30-15:20 15:35-16:25 16:40-17:30 17:45-18:35 18:50-19:40"),
+      [D2]: t("10:00-10:50 11:10-12:00 12:20-13:10 13:25-14:15 14:30-15:20 15:35-16:25 16:40-17:30 17:45-18:35 18:50-19:40"),
+    },
+    count: { [D1]: 9, [D2]: 9 },
+  },
+  {
+    id: "genjitsu-kaihen", group: "Hyuの遊び場", title: "現実改変バックアップ",
+    floor: "2F", room: "211 イージーキャット", format: "ルーム型", run: "新作",
+    difficulty: 6, tags: ["謎解きに慣れた方向け"],
+    people: "4人", durationMin: 50, price: 1500,
+    slots: {
+      [D1]: t("10:00-10:50 11:00-11:50 12:00-12:50 13:00-13:50 14:30-15:20 15:30-16:20 16:30-17:20 17:30-18:20 18:30-19:20"),
+      [D2]: t("10:00-10:50 11:00-11:50 12:00-12:50 13:00-13:50 14:30-15:20 15:30-16:20 16:30-17:20 17:30-18:20 18:30-19:20"),
+    },
+    count: { [D1]: 9, [D2]: 9 },
+  },
+  {
+    id: "merikuri", group: "NAZONE", title: "メリクリセイトンスケルトン",
+    floor: "2F", room: "212 マイスター", format: "ルーム型", run: "新作",
+    difficulty: 4, tags: ["ワチャワチャ系", "初心者歓迎"],
+    people: "2人", durationMin: 15, price: 1000,
+    slots: {
+      [D1]: t("10:00-10:15 10:20-10:35 10:40-10:55 11:00-11:15 11:20-11:35 11:40-11:55 12:00-12:15 12:20-12:35 12:40-12:55 13:00-13:15 13:20-13:35 13:40-13:55 14:50-15:05 15:10-15:25 15:30-15:45 15:50-16:05 16:10-16:25 16:30-16:45 16:50-17:05 17:10-17:25 17:30-17:45 17:50-18:05 18:10-18:25 18:30-18:45 18:50-19:05 19:10-19:25 19:30-19:45"),
+      [D2]: t("10:00-10:15 10:20-10:35 10:40-10:55 11:00-11:15 11:20-11:35 11:40-11:55 12:00-12:15 12:20-12:35 12:40-12:55 13:00-13:15 13:20-13:35 13:40-13:55 14:50-15:05 15:10-15:25 15:30-15:45 15:50-16:05 16:10-16:25 16:30-16:45 16:50-17:05 17:10-17:25 17:30-17:45 17:50-18:05 18:10-18:25 18:30-18:45"),
+    },
+    count: { [D1]: 27, [D2]: 24 },
+  },
+  {
+    id: "kaso-yuenchi", group: "Logix", title: "限界！？過疎遊園地からの脱出",
+    floor: "2F", room: "213 サニテート", format: "ルーム型", run: "新作",
+    difficulty: 6, tags: ["王道", "ワチャワチャ系"],
+    people: "4人", durationMin: 45, price: 1500,
+    slots: {
+      [D1]: t("10:00-10:45 11:15-12:00 13:00-13:45 14:15-15:00 15:30-16:15 16:45-17:30 18:00-18:45 19:15-20:00"),
+      [D2]: t("10:00-10:45 11:15-12:00 13:00-13:45 14:15-15:00 15:30-16:15 16:45-17:30 18:00-18:45 19:15-20:00"),
+    },
+    count: { [D1]: 8, [D2]: 8 },
+  },
+
+  // ---------------------------------------------------------------- 2階 214〜222
+  {
+    id: "kanae", group: "Sheep Rhythm", title: "鼎 -KANAE-",
+    floor: "2F", room: "214 レオパック", format: "ルーム型", run: "再演",
+    difficulty: 7, tags: ["スコアアタック", "謎解きに慣れた方向け", "物量多め"],
+    people: "4人", durationMin: 65, price: 2500,
+    slots: {
+      [D1]: t("10:00-11:05 11:20-12:25 12:40-13:45 13:55-15:00 15:10-16:15 16:25-17:30 17:40-18:45 18:55-20:00"),
+      [D2]: t("10:00-11:05 11:20-12:25 12:40-13:45 13:55-15:00 15:10-16:15 16:25-17:30 17:40-18:45 18:55-20:00"),
+    },
+    count: { [D1]: 8, [D2]: 8 },
+  },
+  {
+    id: "poisutte2", group: "RI:Works", title: "ポイすてっ！2",
+    floor: "2F", room: "215 野菜キレイ", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 7, tags: ["ワチャワチャ系", "スコアアタック", "物量多め"],
+    people: "4人（最少催行2人）", durationMin: 60, price: 3000,
+    slots: {
+      [D1]: t("10:00-11:00 11:30-12:30 13:00-14:00 14:30-15:30 16:00-17:00 17:30-18:30 19:00-20:00"),
+      [D2]: t("10:30-11:30 12:00-13:00 13:30-14:30 15:30-16:30 17:00-18:00 18:30-19:30"),
+    },
+    count: { [D1]: 7, [D2]: 6 },
+  },
+  {
+    id: "utsurundesu", group: "マダミステリ屋", title: "うつるんです！",
+    floor: "2F", room: "216 ライオガード", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 4, tags: ["王道", "ワチャワチャ系", "初心者歓迎"],
+    people: "3人", durationMin: 30, price: 1000,
+    slots: { [D1]: t("10:00-10:30 10:40-11:10 11:20-11:50 12:00-12:30 12:40-13:10 17:30-18:00 18:10-18:40 18:50-19:20 19:30-20:00") },
+    count: { [D1]: 9 },
+  },
+  {
+    id: "5cats", group: "マダミステリ屋", title: "協力型マダミス『5Cats in B-BOX』",
+    floor: "2F", room: "216 ライオガード", format: "ルーム型", run: "再演",
+    difficulty: 5, tags: ["ストーリー重視", "協力推理型のマーダーミステリー"],
+    people: "5人（最少催行2人）", durationMin: 100, price: 3000,
+    slots: { [D1]: t("13:30-15:10 15:30-17:10") }, count: { [D1]: 2 },
+  },
+  {
+    id: "change-challenge", group: "algo", title: "CHANGE CHAllENGE",
+    floor: "2F", room: "216 ライオガード", format: "ルーム型", run: "再演",
+    difficulty: 5, tags: ["ワチャワチャ系", "初心者歓迎"],
+    people: "4人（最少催行2人）", durationMin: 50, price: 2000,
+    slots: { [D2]: t("10:30-11:20 11:30-12:20 12:30-13:20 13:30-14:20 14:30-15:20 15:30-16:20 16:30-17:20 17:30-18:20 18:30-19:20") },
+    count: { [D2]: 9 },
+  },
+  {
+    id: "bomb-power", group: "にくまKey", title: "Bomb Power Mission",
+    floor: "2F", room: "219 KODOMO", format: "ルーム型", run: "新作",
+    difficulty: null, tags: ["ワチャワチャ系", "邪道"],
+    people: "4人", durationMin: 30, price: 1000,
+    slots: {
+      [D1]: t("10:00-10:30 10:50-11:20 11:40-12:10 12:30-13:00 14:00-14:30 14:50-15:20 15:40-16:10 16:30-17:00 17:20-17:50 18:10-18:40"),
+      [D2]: t("10:00-10:30 10:50-11:20 11:40-12:10 12:30-13:00 14:00-14:30 14:50-15:20 15:40-16:10 16:30-17:00 17:20-17:50 18:10-18:40"),
+    },
+    count: { [D1]: 10, [D2]: 10 },
+  },
+  {
+    id: "appare-clinic", group: "あっぱれかんぱに〜", title: "あっぱれクリニックへようこそ！",
+    floor: "2F", room: "220 MAMA", format: "ルーム型", run: "新作",
+    difficulty: 5, tags: ["ワチャワチャ系", "タイムアタック", "探索あり"],
+    people: "4人", durationMin: 45, price: 1500,
+    slots: {
+      [D1]: t("10:00-10:45 11:05-11:50 12:10-12:55 13:45-14:30 14:50-15:35 15:55-16:40 17:00-17:45 18:05-18:50 19:10-19:55"),
+      [D2]: t("10:00-10:45 11:05-11:50 12:10-12:55 13:45-14:30 14:50-15:35 15:55-16:40 17:00-17:45 18:05-18:50 19:10-19:55"),
+    },
+    count: { [D1]: 9, [D2]: 9 },
+  },
+  {
+    id: "toitoiho", group: "CDR", title: "対々和〜問い？解い！咆！〜",
+    floor: "2F", room: "221 EMERON", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 5, tags: ["王道", "ワチャワチャ系"],
+    people: "4人", durationMin: 40, price: 2000,
+    slots: {
+      [D1]: t("10:00-10:40 11:00-11:40 12:00-12:40 13:00-13:40 15:00-15:40 16:00-16:40 17:00-17:40 18:00-18:40 19:00-19:40"),
+      [D2]: t("10:00-10:40 11:00-11:40 12:00-12:40 13:00-13:40 15:00-15:40 16:00-16:40 17:00-17:40 18:00-18:40 19:00-19:40"),
+    },
+    count: { [D1]: 9, [D2]: 9 },
+  },
+  {
+    id: "lostfilm", group: "なぞ助", title: "lostFilm",
+    floor: "2F", room: "222 LIPON", format: "ルーム型", run: "再演/東京初演",
+    difficulty: 3, tags: ["初心者歓迎", "ストーリー重視"],
+    people: "3人", durationMin: 30, price: 1500,
+    slots: { [D1]: t("10:00-10:30 10:40-11:10 11:20-11:50 12:00-12:30 12:40-13:10 13:20-13:50 14:00-14:30 14:40-15:10 16:00-16:30 16:40-17:10 17:20-17:50 18:00-18:30 18:40-19:10 19:20-19:50") },
+    count: { [D1]: 14 },
+  },
+  {
+    id: "kentei", group: "ちゃら", title: "■■力検定",
+    floor: "2F", room: "222 LIPON", format: "ルーム型", run: "再演",
+    difficulty: 7, tags: ["スコアアタック", "謎解きに慣れた方向け", "カス"],
+    people: "3人", durationMin: 45, price: 2000,
+    slots: { [D2]: t("10:00-10:45 11:00-11:45 12:00-12:45 13:00-13:45 14:00-14:45 15:00-15:45 16:00-16:45 17:00-17:45 18:00-18:45 19:00-19:45") },
+    count: { [D2]: 10 },
+  },
+
+  // ---------------------------------------------------------------- 4階 ブース
+  {
+    id: "death-game", group: "ドリム", title: "デスゲーム",
+    floor: "4F", room: "ブース②", format: "ブース型", run: "新作",
+    difficulty: 3, tags: ["ワチャワチャ系", "スコアアタック", "初心者歓迎"],
+    people: "4人", durationMin: 45, price: 2500,
+    slots: { [D1]: t("10:00-10:45 10:50-11:35 11:40-12:25 12:30-13:15 13:20-14:05 14:10-14:55 15:00-15:45 15:50-16:35 16:40-17:25 17:30-18:15 18:20-19:05 19:10-19:55") },
+    count: { [D1]: 12 },
+  },
+  {
+    id: "gekikara-curry", group: "創名", title: "激辛カレー店からの脱出",
+    floor: "4F", room: "ブース③", format: "ブース型", run: "新作",
+    difficulty: 5, tags: ["王道", "ワチャワチャ系"],
+    people: "4人", durationMin: 70, price: 2000,
+    slots: {
+      [D1]: t("10:10-11:20 11:50-13:00 13:30-14:40 15:10-16:20 16:50-18:00 18:30-19:40"),
+      [D2]: t("10:10-11:20 11:50-13:00 13:30-14:40 15:10-16:20 16:50-18:00 18:30-19:40"),
+    },
+    count: { [D1]: 6, [D2]: 6 },
+  },
+  {
+    id: "opaque", group: "不思議収集部", title: "水彩画個展 Opaque",
+    floor: "4F", room: "ブース⑥", format: "ブース型", run: "再演/東京初演",
+    difficulty: 6, tags: ["王道", "ストーリー重視", "エモ系"],
+    people: "5人", durationMin: 60, price: 2500,
+    note: "⑨（19:25〜）は再入場チケット。1000円・当日最大6人まで先着で受付",
+    special: { "19:25": { price: 1000, label: "再入場" } },
+    slots: {
+      [D1]: t("10:10-11:10 11:20-12:20 12:30-13:30 13:40-14:40 14:50-15:50 16:00-17:00 17:10-18:10 18:20-19:20 19:25-19:55"),
+      [D2]: t("10:10-11:10 11:20-12:20 12:30-13:30 13:40-14:40 14:50-15:50 16:00-17:00 17:10-18:10 18:20-19:20 19:25-19:55"),
+    },
+    count: { [D1]: 9, [D2]: 9 },
+  },
+  {
+    id: "flow", group: "モノマニアック", title: "FLOW",
+    floor: "4F", room: "ブース⑧", lane: "FLOW", format: "ブース型", run: "再演/東京初演",
+    difficulty: 6, tags: ["初心者歓迎", "謎解きに慣れた方向け"],
+    people: "2人", durationMin: 50, price: 2000,
+    slots: {
+      [D1]: t("10:10-11:00 11:20-12:10 12:30-13:20 13:40-14:30 16:40-17:30 17:50-18:40 19:00-19:50"),
+      [D2]: t("10:10-11:00 11:20-12:10 12:30-13:20 13:40-14:30 16:40-17:30 17:50-18:40 19:00-19:50"),
+    },
+    count: { [D1]: 7, [D2]: 7 },
+  },
+  {
+    id: "trump-game", group: "モノマニアック", title: "TRUMP GAME",
+    floor: "4F", room: "ブース⑧", lane: "TRUMP", format: "ブース型", run: "新作",
+    difficulty: 8, tags: ["推測", "計画", "実行"],
+    people: "2人", durationMin: 70, price: 2000,
+    slots: {
+      [D1]: t("10:20-11:30 11:50-13:00 13:20-14:30 15:30-16:40 17:00-18:10 18:30-19:40"),
+      [D2]: t("10:20-11:30 11:50-13:00 13:20-14:30 15:30-16:40 17:00-18:10 18:30-19:40"),
+    },
+    count: { [D1]: 6, [D2]: 6 },
+  },
+  {
+    id: "sgo", group: "uranariya", title: "SGO -Seiko Great Okan-",
+    floor: "4F", room: "ブース⑨", format: "ブース型", run: "再演/東京初演",
+    difficulty: 2, tags: ["ワチャワチャ系", "初心者歓迎"],
+    people: "2人", durationMin: 40, price: 1500,
+    slots: { [D1]: t("10:00-10:40 10:50-11:30 11:40-12:20 12:30-13:10 14:10-14:50 15:00-15:40 15:50-16:30 17:30-18:10 18:20-19:00 19:10-19:50") },
+    count: { [D1]: 10 },
+  },
+  {
+    id: "makki", group: "すぎやまっきー", title: "まっきー1本謎のもと",
+    floor: "4F", room: "ブース⑪", format: "ブース型", run: "再演/東京初演",
+    difficulty: 3, tags: ["王道", "タイムアタック", "初心者歓迎"],
+    people: "2人", durationMin: 20, price: 1000,
+    slots: {
+      [D1]: t("10:00-10:20 10:30-10:50 11:00-11:20 11:30-11:50 12:00-12:20 12:30-12:50 13:30-13:50 14:00-14:20 14:30-14:50 15:00-15:20 15:30-15:50 16:00-16:20 17:00-17:20 17:30-17:50 18:00-18:20 18:30-18:50 19:00-19:20 19:30-19:50"),
+      [D2]: t("10:00-10:20 10:30-10:50 11:00-11:20 11:30-11:50 12:00-12:20 12:30-12:50 13:30-13:50 14:00-14:20 14:30-14:50 15:00-15:20 15:30-15:50 16:00-16:20 17:00-17:20 17:30-17:50 18:00-18:20 18:30-18:50 19:00-19:20 19:30-19:50"),
+    },
+    count: { [D1]: 18, [D2]: 18 },
+  },
+];
+
+// 事前予約不要で遊べるコンテンツ（時間割なし。すきま時間の候補として一覧だけ出す）
+const WALK_INS = [
+  { group: "Flambeur's Coin", title: "あい間に・・・", how: "当日時間予約", difficulty: null, people: "なし", price: "時価", time: "5〜120分", days: [D1, D2], tags: ["エモ系", "合間の有効活用"] },
+  { group: "Flambeur's Coin", title: "blin(e)d", how: "随時受付", difficulty: 6, people: "なし", price: "1000円", time: "45〜90分", days: [D1, D2], tags: ["スキマ時間で遊べる"] },
+  { group: "Flambeur's Coin", title: "blin(e)d2", how: "随時受付", difficulty: 7, people: "なし", price: "1000円", time: "45〜90分", days: [D1, D2], tags: ["スキマ時間で遊べる"] },
+  { group: "Flambeur's Coin", title: "blin(e)d3", how: "随時受付", difficulty: 5, people: "なし", price: "1000円", time: "30〜60分", days: [D1, D2], tags: ["スキマ時間で遊べる"] },
+  { group: "やせいのやさいず", title: "やせいのやさいず菜園祭", how: "ファミレス形式", difficulty: 7, people: "1〜4人（個人戦）", price: "500円", time: "30〜70分", days: [D2], tags: ["謎解きに慣れた方向け", "ミニゲーム3種"] },
+  { group: "ENIG-ROID", title: "わなげのゲーム、わなげーむ", how: "ファミレス形式", difficulty: 6, people: "1〜3人", price: "1500円", time: "35分程度", days: [D1, D2], tags: ["ワチャワチャ系", "タイムアタック"] },
+  { group: "あっちゃん", title: "手話でつなぐナゾ", how: "ファミレス形式（オープンチャット使用）", difficulty: null, people: "1〜2人", price: "1000円", time: "20〜30分程度", days: [D1], tags: ["王道", "手話×謎解き"] },
+  { group: "K-dush2", title: "解錠せよ", how: "ファミレス形式", difficulty: 4, people: "1〜3人（1〜2人推奨）", price: "500円", time: "10分", days: [D2], tags: ["ワチャワチャ系", "タイムアタック", "謎解きに慣れた方向け"] },
+  { group: "site:Arcana", title: "Re:ACTION!!!", how: "ファミレス形式", difficulty: 5, people: "1〜3人", price: "1000円", time: "30分", days: [D1, D2], tags: ["ワチャワチャ系", "スコアアタック", "タイムアタック"] },
+  { group: "初代キノコ", title: "MOVE", how: "ファミレス形式", difficulty: 1, people: "3〜4人", price: "800円", time: "40分", days: [D2], tags: ["謎解きに慣れた方向け", "エモ系"] },
+  { group: "algo", title: "うれしい！あにまるなぞとき", how: "ファミレス形式", difficulty: 3, people: "1〜2人", price: "1人1000円・2人1500円", time: "30分", days: [D1, D2], tags: ["ワチャワチャ系", "タイムアタック"] },
+  { group: "CzardasZ -チャル脱出-", title: "解いて積んで謎解きジェンガ", how: "ファミレス形式", difficulty: 4, people: "2人", price: "500円", time: "15分", days: [D1, D2], tags: ["ワチャワチャ系", "スコアアタック", "初心者歓迎"] },
+  { group: "謎解き制作団体JTS", title: "Balance", how: "ファミレス形式", difficulty: 3, people: "1〜2人", price: "1600円", time: "20分程度", days: [D1, D2], tags: ["ワチャワチャ系", "初心者歓迎"] },
+  { group: "P.E.G", title: "DIGITAL NAZO SELECT", how: "ファミレス形式（カフェ謎）", difficulty: null, people: "1〜2人", price: "300〜1000円", time: "20〜150分", days: [D1, D2], tags: ["デジタルゲーム", "初心者〜上級者向けの複数作品あり"] },
+  { group: "0001（ゼロイチ）", title: "ひらめき銭湯 解乃湯（ときのゆ）", how: "運営受付（カフェ謎）", difficulty: 3, people: "1人〜（複数人可）", price: "1人1500円・2人以上1000円/人", time: "30〜60分", days: [D1, D2], tags: ["王道", "初心者歓迎"] },
+  { group: "K-dush2", title: "Emperor of Employees", how: "ファミレス形式（カフェ謎）", difficulty: 6, people: "1人〜", price: "300円", time: "20〜30分", days: [D1, D2], tags: ["謎解きに慣れた方向け", "なんでも許せる方向け", "ブラック企業"] },
+  { group: "K-dush2", title: "K-dush2入会試験", how: "ファミレス形式（カフェ謎）", difficulty: 7, people: "1人〜", price: "1500円", time: "60分程度", days: [D1, D2], tags: ["スコアアタック", "物量多め", "小謎"] },
+  { group: "K-dush2", title: "K-dush2裏入会試験", how: "ファミレス形式（カフェ謎）", difficulty: null, people: "1〜2人", price: "300円", time: "約20分", days: [D1, D2], tags: ["謎解きに慣れた方向け", "なんでも許せる方向け", "カス謎・クソ謎"] },
+  { group: "かえりみち工房", title: "箱なぞのカフェ謎", how: "随時受付（カフェ謎）", difficulty: null, people: "1人〜", price: "600円〜", time: "5〜50分程度", days: [D1, D2], tags: ["初心者歓迎"] },
+  { group: "3年え組", title: "Check it！", how: "随時受付（カフェ謎）", difficulty: 6, people: "無制限", price: "1500円", time: "40分", days: [D1, D2], tags: ["王道", "チェキが撮れる"] },
+  { group: "algo", title: "対戦！なぞとき神経衰弱", how: "随時受付（カフェ謎）", difficulty: 3, people: "2人〜", price: "500円/キット", time: "10〜30分", days: [D1, D2], tags: ["初心者歓迎", "対戦"] },
+  { group: "algo", title: "謎解きスイーパー", how: "随時受付（カフェ謎）", difficulty: 7, people: "1〜2人", price: "300円", time: "30〜60分", days: [D1, D2], tags: ["タイムアタック"] },
+  { group: "J's C Labo", title: "持ち帰り謎の販売", how: "随時受付（物販）", difficulty: null, people: "-", price: "当日現地で確認", time: "-", days: [D1, D2], tags: ["持ち帰り謎販売"] },
+];
+
+/* ===== planner.js ===== */
+// 予定の計算。DOM には触れない。
+//
+// 予定（plan）は次の2種類の並び。
+//   公演の回  { showId, day, start, end, bought? }
+//   自分の予定 { label, day, start, end }       … ごはん・休憩・予約不要コンテンツなど
+//
+// 自動で埋めることはしない。選んだ回が他とぶつかるか、前後がどれだけあくかを出すだけ。
+
+/** "HH:MM" を 0時からの分に変換する。 */
+function toMinutes(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? "").trim());
+  if (!m) throw new Error(`時刻の形式が不正です: ${hhmm}`);
+  const h = Number(m[1]);
+  const mi = Number(m[2]);
+  if (h > 23 || mi > 59) throw new Error(`時刻の範囲が不正です: ${hhmm}`);
+  return h * 60 + mi;
+}
+
+/** 分を "H:MM" に戻す。 */
+function toHHMM(min) {
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
+}
+
+const span = (x) => [toMinutes(x.start), toMinutes(x.end)];
+const sameSlot = (x, y) => x.showId === y.showId && x.day === y.day && x.start === y.start;
+const byStart = (x, y) => toMinutes(x.start) - toMinutes(y.start) || toMinutes(x.end) - toMinutes(y.end);
+
+/**
+ * ある回が、今の予定に対してどういう状態か。
+ *   chosen   … もう選んでいる
+ *   moved    … 同じ公演の別の回を選んでいる（選ぶと入れ替わる）
+ *   conflict … 時間が重なる予定がある（with に相手）
+ *   tight    … 重ならないが、前後のあきが移動時間より短い（gap に最小のあき）
+ *   free     … 問題なく入る
+ * 重なりは moved より優先して返す。入れ替えた先でぶつかるほうが困るので。
+ */
+function slotStatus(slot, plan, bufferMin = 0) {
+  if (plan.some((p) => p.showId != null && sameSlot(p, slot))) return { state: "chosen" };
+
+  const [a, b] = span(slot);
+  const others = plan.filter((p) => p.day === slot.day && !(slot.showId != null && p.showId === slot.showId));
+  const hit = others.filter((p) => {
+    const [pa, pb] = span(p);
+    return pa < b && a < pb;
+  });
+  if (hit.length) return { state: "conflict", with: hit };
+
+  let gap = Infinity;
+  for (const p of others) {
+    const [pa, pb] = span(p);
+    gap = Math.min(gap, pb <= a ? a - pb : pa - b);
+  }
+  if (gap < bufferMin) return { state: "tight", gap };
+
+  if (slot.showId != null && plan.some((p) => p.showId === slot.showId)) return { state: "moved" };
+  return { state: "free" };
+}
+
+/**
+ * 回を予定に入れる。同じ公演の別の回と、時間が重なる予定は外す。
+ * 外したものは removed で返す（画面で「〇〇を外しました」と出すため）。
+ */
+function choose(plan, slot) {
+  const kept = plan.find((p) => p.showId != null && sameSlot(p, slot));
+  const [a, b] = span(slot);
+  const removed = [];
+  const next = [];
+  for (const p of plan) {
+    if (kept && p === kept) continue;
+    const sameShow = slot.showId != null && p.showId === slot.showId;
+    const [pa, pb] = span(p);
+    const overlap = p.day === slot.day && pa < b && a < pb;
+    if (sameShow || overlap) removed.push(p);
+    else next.push(p);
+  }
+  next.push(kept ?? { ...slot });
+  next.sort((x, y) => x.day.localeCompare(y.day) || byStart(x, y));
+  return { plan: next, removed };
+}
+
+/** 予定から1件外す。 */
+function unchoose(plan, item) {
+  return plan.filter(
+    (p) =>
+      !(p.day === item.day && p.start === item.start && p.end === item.end && p.showId === item.showId && p.label === item.label),
+  );
+}
+
+/**
+ * その日の空き時間。open〜close のうち、予定が入っていないところ。
+ * a/b は分。edgeA/edgeB は「その端が日の始まり／終わりか」（移動時間を取らなくていい端）。
+ */
+function gapsOf(plan, day, { open, close }) {
+  const items = plan.filter((p) => p.day === day).map(span).sort((x, y) => x[0] - y[0]);
+  const O = toMinutes(open);
+  const C = toMinutes(close);
+  const out = [];
+  let cur = O;
+  let edge = true;
+  for (const [a, b] of items) {
+    if (a > cur) out.push({ a: cur, b: a, edgeA: edge, edgeB: false });
+    if (b > cur) {
+      cur = b;
+      edge = false;
+    }
+  }
+  if (C > cur) out.push({ a: cur, b: C, edgeA: edge, edgeB: true });
+  return out;
+}
+
+/** その回が、前後に移動時間を取ったうえで空きに収まるか。 */
+function fitsGap(slot, gap, bufferMin = 0) {
+  const [a, b] = span(slot);
+  const lo = gap.a + (gap.edgeA ? 0 : bufferMin);
+  const hi = gap.b - (gap.edgeB ? 0 : bufferMin);
+  return a >= lo && b <= hi;
+}
+
+/** その回の料金。特別枠（再入場チケットなど）は別料金。 */
+function priceOf(show, start) {
+  return show.special?.[start]?.price ?? show.price;
+}
+
+/** 日ごと・全体の公演数、料金、謎解き時間、購入済みの数。 */
+function summarize(plan, shows) {
+  const byId = new Map(shows.map((s) => [s.id, s]));
+  const days = {};
+  const total = { count: 0, price: 0, bought: 0 };
+  for (const p of plan) {
+    if (p.showId == null) continue;
+    const show = byId.get(p.showId);
+    if (!show) continue;
+    const d = (days[p.day] ??= { count: 0, price: 0, minutes: 0 });
+    const price = priceOf(show, p.start);
+    const [a, b] = span(p);
+    d.count++;
+    d.price += price;
+    d.minutes += b - a;
+    total.count++;
+    total.price += price;
+    if (p.bought) total.bought++;
+  }
+  return { days, total };
+}
+
+/* ---------------- 当日 ---------------- */
+
+/** 今が会期中なら { day, min }。端末のローカル時刻で見る。 */
+function festivalNow(date, fes) {
+  if (date.getFullYear() !== fes.year) return null;
+  const id = String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  if (!fes.days.some((d) => d.id === id)) return null;
+  return { day: id, min: date.getHours() * 60 + date.getMinutes() };
+}
+
+/** 予定を「今」で切って、いま・次・それ以降に分ける。 */
+function nowNext(plan, now) {
+  const today = plan
+    .filter((f) => f.day === now.day)
+    .map((f) => ({ ...f, a: toMinutes(f.start), b: toMinutes(f.end) }))
+    .sort((x, y) => x.a - y.a);
+  const t = now.min;
+  const current = today.find((f) => f.a <= t && t < f.b) ?? null;
+  const upcoming = today.filter((f) => f.a > t);
+  const next = upcoming[0] ?? null;
+  return {
+    current,
+    next,
+    later: upcoming.slice(1),
+    untilNext: next ? next.a - t : null,
+    leftOfCurrent: current ? current.b - t : null,
+  };
+}
+
+/** コピー用のテキスト。 */
+function planToText(plan, shows, days) {
+  const byId = new Map(shows.map((s) => [s.id, s]));
+  const blocks = [];
+  for (const d of days) {
+    const items = plan.filter((p) => p.day === d.id).sort(byStart);
+    if (!items.length) continue;
+    const lines = [`■ ${d.label}(${d.weekday})`];
+    for (const p of items) {
+      const show = p.showId != null ? byId.get(p.showId) : null;
+      const what = show ? `${show.title}（${show.floor} ${show.room}）` : p.label;
+      lines.push(`${p.start}-${p.end} ${what}`);
+    }
+    blocks.push(lines.join("\n"));
+  }
+  return blocks.join("\n\n");
+}
+
+/* ===== storage.js ===== */
+// 立てた予定の保存と、URLでの共有。
+//
+// 保存したデータは、あとで公演データを直したときに古くなりうる。
+// 読み戻すときは今のデータと突き合わせ、実在しない公演・回は黙って捨てる。
+
+
+
+const STORAGE_KEY = "saien-fes-planner/v1";
+
+const isHHMM = (v) => typeof v === "string" && /^\d{1,2}:\d{2}$/.test(v);
+const okSpan = (x) => isHHMM(x.start) && isHHMM(x.end) && toMinutes(x.start) < toMinutes(x.end);
+
+function encodeState(s) {
+  return { v: 1, plan: s.plan, favorites: [...s.favorites], buffer: s.buffer, day: s.day };
+}
+
+/** 壊れていても落とさず、通ったものだけ返す。形が違えば null。 */
+function decodeState(raw, { shows, days }) {
+  if (!raw || typeof raw !== "object" || raw.v !== 1) return null;
+  const byId = new Map(shows.map((s) => [s.id, s]));
+  const plan = [];
+  const seen = new Set();
+  for (const f of Array.isArray(raw.plan) ? raw.plan : []) {
+    if (!f || !days.includes(f.day)) continue;
+    if (f.showId != null) {
+      const show = byId.get(f.showId);
+      const slot = show?.slots[f.day]?.find((x) => x.start === f.start && x.end === f.end);
+      if (!slot || seen.has(f.showId)) continue;
+      seen.add(f.showId);
+      plan.push({ showId: f.showId, day: f.day, start: f.start, end: f.end, ...(f.bought ? { bought: true } : {}) });
+    } else if (okSpan(f)) {
+      plan.push({ day: f.day, start: f.start, end: f.end, label: String(f.label ?? "予定").slice(0, 30) });
+    }
+  }
+  return {
+    plan,
+    favorites: (Array.isArray(raw.favorites) ? raw.favorites : []).filter((id) => byId.has(id)),
+    buffer: [0, 5, 10, 15, 20].includes(raw.buffer) ? raw.buffer : 10,
+    day: days.includes(raw.day) ? raw.day : days[0],
+  };
+}
+
+function loadState(store, ctx) {
+  try {
+    return decodeState(JSON.parse(store.getItem(STORAGE_KEY)), ctx);
+  } catch {
+    return null;
+  }
+}
+
+function saveState(store, s) {
+  try {
+    store.setItem(STORAGE_KEY, JSON.stringify(encodeState(s)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* ---------------- 共有 ----------------
+ * 予定をURLに畳む。区切り文字なしで桁数を決め打ちにする。
+ *   公演の回   公演番号(2) 日(1) 開始(2)                 → 5文字
+ *   自分の予定 "-" 日(1) 開始(2) 終了(2) 名札(1)         → 7文字
+ * 番号・時刻は36進。時刻は0時からの分（36進2桁で21:35まで表せる）。
+ * 購入済みの印は渡さない（自分の買い物の記録なので）。
+ * 回は「何時からか」で持つ。データを直したとき別の回にすり替わるより、落ちるほうがいい。
+ */
+const VERSION = "1";
+const b36 = (n) => n.toString(36).padStart(2, "0");
+const un36 = (s) => (/^[0-9a-z]{2}$/.test(s) ? parseInt(s, 36) : NaN);
+
+function encodePlan(plan, { shows, days, labels }) {
+  const index = new Map(shows.map((s, i) => [s.id, i]));
+  const parts = [];
+  for (const f of plan) {
+    const d = days.indexOf(f.day);
+    if (d < 0) continue;
+    if (f.showId != null) {
+      const i = index.get(f.showId);
+      if (i == null) continue;
+      parts.push(b36(i) + d + b36(toMinutes(f.start)));
+    } else {
+      const li = labels.indexOf(f.label);
+      parts.push("-" + d + b36(toMinutes(f.start)) + b36(toMinutes(f.end)) + (li < 0 ? labels.length - 1 : li));
+    }
+  }
+  return parts.length ? VERSION + parts.join("") : "";
+}
+
+function decodePlan(str, { shows, days, labels }) {
+  if (typeof str !== "string" || str[0] !== VERSION) return [];
+  const out = [];
+  const seen = new Set();
+  let i = 1;
+  while (i < str.length) {
+    if (str[i] === "-") {
+      const day = days[str[i + 1]];
+      const a = un36(str.slice(i + 2, i + 4));
+      const b = un36(str.slice(i + 4, i + 6));
+      const label = labels[str[i + 6]];
+      i += 7;
+      if (!day || !label || !(a >= 0) || !(b > a)) continue;
+      out.push({ day, start: toHHMM(a), end: toHHMM(b), label });
+    } else {
+      const show = shows[un36(str.slice(i, i + 2))];
+      const day = days[str[i + 2]];
+      const at = un36(str.slice(i + 3, i + 5));
+      i += 5;
+      if (!show || !day || seen.has(show.id)) continue;
+      const sl = show.slots[day]?.find((x) => toMinutes(x.start) === at);
+      if (!sl) continue;
+      seen.add(show.id);
+      out.push({ showId: show.id, day, start: sl.start, end: sl.end });
+    }
+  }
+  return out;
+}
+
+/* ===== ui.js ===== */
+// 画面。状態は S に1つだけ持ち、変わったら render() で描き直す。
+// 公演は44・回は約480。全部描き直しても数ms なので、差分更新はしない。
+
+
+
+
+
+const DAYS = FES.days.map((d) => d.id);
+const DAY_LABEL = Object.fromEntries(FES.days.map((d) => [d.id, `${d.label}(${d.weekday})`]));
+const LABELS = ["ごはん", "休憩", "予約不要", "移動", "その他"];
+const OPEN = "10:00";
+const CLOSE = "20:00";
+const FLOOR_COLOR = { "11F": "var(--f11)", "2F": "var(--f2)", "4F": "var(--f4)" };
+const byId = new Map(SHOWS.map((s) => [s.id, s]));
+const CTX = { shows: SHOWS, days: DAYS, labels: LABELS };
+
+/* ---------------- 状態 ---------------- */
+
+const saved = typeof localStorage !== "undefined" ? loadState(localStorage, CTX) : null;
+const S = {
+  plan: saved?.plan ?? [],
+  favorites: new Set(saved?.favorites ?? []),
+  buffer: saved?.buffer ?? 10,
+  day: saved?.day ?? DAYS[0],
+  view: "list", // list | grid
+  q: "",
+  floor: "all",
+  diff: "all",
+  len: "all",
+  onlyFav: false,
+  onlyFits: false,
+  sort: "place",
+  gap: null, // { day, a, b, edgeA, edgeB } 空きで絞り込み中
+  sheet: false,
+  shared: null, // 共有URLで受け取った予定
+  toast: null,
+};
+
+function persist() {
+  if (typeof localStorage !== "undefined") saveState(localStorage, S);
+}
+
+function takeShared() {
+  const m = /[#&]p=([0-9a-z-]+)/.exec(location.hash);
+  if (!m) return;
+  const plan = decodePlan(m[1], CTX);
+  if (plan.length) S.shared = plan;
+}
+
+/* ---------------- 小物 ---------------- */
+
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "text") e.textContent = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+}
+
+const yen = (n) => "¥" + n.toLocaleString("ja-JP");
+const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}時間${m % 60 ? (m % 60) + "分" : ""}` : `${m}分`);
+const floorStyle = (f) => `--fc:${FLOOR_COLOR[f]}`;
+const showOf = (p) => (p.showId != null ? byId.get(p.showId) : null);
+const nameOf = (p) => showOf(p)?.title ?? p.label;
+const slotObj = (show, day, x) => ({ showId: show.id, day, start: x.start, end: x.end });
+
+function say(text, undoPlan) {
+  S.toast = { text, undo: undoPlan ?? null, at: Date.now() };
+  const at = S.toast.at;
+  setTimeout(() => {
+    if (S.toast?.at === at) {
+      S.toast = null;
+      renderToast();
+    }
+  }, 6000);
+  renderToast();
+}
+
+function setPlan(next, msg, undo) {
+  S.plan = next;
+  persist();
+  render();
+  if (msg) say(msg, undo);
+}
+
+/* ---------------- 操作 ---------------- */
+
+function toggleSlot(show, day, x) {
+  const slot = slotObj(show, day, x);
+  const st = slotStatus(slot, S.plan, S.buffer);
+  const before = S.plan;
+  if (st.state === "chosen") {
+    const item = S.plan.find((p) => p.showId === show.id && p.day === day && p.start === x.start);
+    setPlan(unchoose(S.plan, item), `${show.title} ${x.start} を外しました`, before);
+    return;
+  }
+  const { plan, removed } = choose(S.plan, slot);
+  // 空きで絞り込んでいたなら、埋まったので解除する
+  if (S.gap && S.gap.day === day) S.gap = null;
+  const msg = removed.length
+    ? `${show.title} ${x.start} を入れ、${removed.map((r) => `${nameOf(r)} ${r.start}`).join("・")} を外しました`
+    : `${show.title} ${DAY_LABEL[day]} ${x.start} を入れました`;
+  setPlan(plan, msg, before);
+}
+
+function slotLabel(show, day, x, st) {
+  const base = `${show.title} ${DAY_LABEL[day]} ${x.start}から${x.end}`;
+  switch (st.state) {
+    case "chosen": return `${base}、予定に入っています。押すと外します`;
+    case "moved": return `${base}、別の回を選んでいます。押すとこの回に入れ替えます`;
+    case "conflict": return `${base}、${st.with.map(nameOf).join("・")}と重なります。押すと入れ替えます`;
+    case "tight": return `${base}、前後のあきが${st.gap}分です`;
+    default: return base;
+  }
+}
+
+function slotHint(show, day, x, st) {
+  if (st.state === "chosen") return "選択中";
+  if (st.state === "tight") return `あき${st.gap}分`;
+  if (st.state === "conflict") return "重なる";
+  if (st.state === "moved") return "入れ替え";
+  if (show.special?.[x.start]) return show.special[x.start].label;
+  return `〜${x.end}`;
+}
+
+/* ---------------- 絞り込み ---------------- */
+
+function matches(show) {
+  if (!show.slots[S.day]) return false;
+  if (S.floor !== "all" && show.floor !== S.floor) return false;
+  if (S.onlyFav && !S.favorites.has(show.id)) return false;
+  const d = show.difficulty;
+  if (S.diff === "low" && !(d != null && d <= 4)) return false;
+  if (S.diff === "mid" && !(d != null && d >= 5 && d <= 6)) return false;
+  if (S.diff === "high" && !(d != null && d >= 7)) return false;
+  const m = show.durationMin;
+  if (S.len === "30" && m > 30) return false;
+  if (S.len === "60" && m > 60) return false;
+  if (S.len === "90" && m > 90) return false;
+  if (S.len === "long" && m <= 90) return false;
+  if (S.q) {
+    const hay = `${show.title} ${show.group} ${show.room} ${show.tags.join(" ")}`.toLowerCase();
+    if (!hay.includes(S.q.toLowerCase())) return false;
+  }
+  if (S.gap && !show.slots[S.day].some((x) => fitsGap(x, S.gap, S.buffer))) return false;
+  if (S.onlyFits) {
+    const picked = S.plan.some((p) => p.showId === show.id);
+    const ok = show.slots[S.day].some((x) => {
+      const st = slotStatus(slotObj(show, S.day, x), S.plan, S.buffer).state;
+      return st === "free" || st === "moved";
+    });
+    if (!picked && !ok) return false;
+  }
+  return true;
+}
+
+const PLACE_ORDER = new Map(SHOWS.map((s, i) => [s.id, i]));
+function sorted(list) {
+  const first = (s) => toMinutes(s.slots[S.day][0].start);
+  const diffOr = (s, v) => s.difficulty ?? v;
+  const cmp = {
+    place: (a, b) => PLACE_ORDER.get(a.id) - PLACE_ORDER.get(b.id),
+    hard: (a, b) => diffOr(b, -1) - diffOr(a, -1),
+    easy: (a, b) => diffOr(a, 99) - diffOr(b, 99),
+    short: (a, b) => a.durationMin - b.durationMin,
+    cheap: (a, b) => a.price - b.price,
+    early: (a, b) => first(a) - first(b),
+  }[S.sort];
+  return [...list].sort((a, b) => cmp(a, b) || PLACE_ORDER.get(a.id) - PLACE_ORDER.get(b.id));
+}
+
+/* ---------------- 上部 ---------------- */
+
+function topbar() {
+  const dayBtns = FES.days.map((d) =>
+    h("button", {
+      type: "button",
+      "aria-pressed": String(S.day === d.id),
+      onclick: () => {
+        S.day = d.id;
+        S.gap = null;
+        persist();
+        render();
+      },
+    }, `${d.label}(${d.weekday})`),
+  );
+  const viewBtns = [
+    ["list", "一覧"],
+    ["grid", "時間割"],
+  ].map(([v, t]) =>
+    h("button", { type: "button", "aria-pressed": String(S.view === v), onclick: () => { S.view = v; render(); } }, t),
+  );
+  const buf = h("select", {
+    id: "buffer",
+    onchange: (e) => { S.buffer = Number(e.target.value); persist(); render(); },
+  }, [0, 5, 10, 15, 20].map((n) => h("option", { value: n, selected: S.buffer === n }, `${n}分`)));
+
+  return h("header", { class: "top" },
+    h("div", { class: "top-in" },
+      h("div", { class: "brand" }, h("h1", null, FES.title), h("span", null, "予定づくり")),
+      h("div", { class: "seg", role: "group", "aria-label": "日付" }, dayBtns),
+      h("label", { class: "field", for: "buffer" }, "移動にとる時間", buf),
+      h("div", { class: "seg", role: "group", "aria-label": "表示" }, viewBtns),
+    ),
+  );
+}
+
+function banners() {
+  const out = [];
+  const now = festivalNow(new Date(), FES);
+  if (now) {
+    const nn = nowNext(S.plan, now);
+    const parts = [];
+    if (nn.current) parts.push(h("span", null, "いま ", h("b", null, nameOf(nn.current)), ` 〜${nn.current.end}（あと${nn.leftOfCurrent}分）`));
+    if (nn.next) parts.push(h("span", null, "次 ", h("b", null, nameOf(nn.next)), ` ${nn.next.start}〜（あと${nn.untilNext}分）`, showOf(nn.next)?.floor === "11F" ? "・1Fに集合" : ""));
+    if (!parts.length) parts.push(h("span", null, "今日の予定はもうありません"));
+    out.push(h("div", { class: "now", role: "status" }, parts));
+  }
+  if (S.shared) {
+    out.push(
+      h("div", { class: "shared" },
+        h("b", null, `共有された予定（${S.shared.length}件）`),
+        h("button", {
+          type: "button", class: "btn primary",
+          onclick: () => {
+            const before = S.plan;
+            S.plan = S.shared;
+            S.shared = null;
+            history.replaceState(null, "", location.pathname + location.search);
+            setPlan(S.plan, "共有された予定を自分の予定にしました", before);
+          },
+        }, "自分の予定にする"),
+        h("button", {
+          type: "button", class: "btn",
+          onclick: () => { S.shared = null; history.replaceState(null, "", location.pathname + location.search); render(); },
+        }, "閉じる"),
+        h("pre", null, planToText(S.shared, SHOWS, FES.days)),
+      ),
+    );
+  }
+  return out.length ? h("div", { class: "banner" }, out) : null;
+}
+
+/* ---------------- 一覧 ---------------- */
+
+function filters() {
+  const sel = (id, label, key, opts) =>
+    h("label", { class: "field", for: id }, label,
+      h("select", { id, onchange: (e) => { S[key] = e.target.value; render(); } },
+        opts.map(([v, t]) => h("option", { value: v, selected: S[key] === v }, t))));
+  const tog = (label, key) =>
+    h("button", { type: "button", class: "toggle", "aria-pressed": String(S[key]), onclick: () => { S[key] = !S[key]; render(); } }, label);
+
+  return h("div", { class: "tools" },
+    h("label", { class: "sr", for: "q" }, "公演を検索"),
+    h("input", {
+      id: "q", type: "search", placeholder: "公演名・団体名・部屋で検索", value: S.q,
+      oninput: (e) => { S.q = e.target.value; renderMain(); },
+    }),
+    sel("floor", "階", "floor", [["all", "すべて"], ["11F", "11階"], ["2F", "2階"], ["4F", "4階"]]),
+    sel("diff", "難易度", "diff", [["all", "すべて"], ["low", "〜4"], ["mid", "5〜6"], ["high", "7〜"]]),
+    sel("len", "所要", "len", [["all", "すべて"], ["30", "30分以内"], ["60", "60分以内"], ["90", "90分以内"], ["long", "90分超"]]),
+    sel("sort", "並び", "sort", [["place", "場所順"], ["early", "早い回から"], ["hard", "難しい順"], ["easy", "易しい順"], ["short", "短い順"], ["cheap", "安い順"]]),
+    tog("★だけ", "onlyFav"),
+    tog("今の予定に入るものだけ", "onlyFits"),
+  );
+}
+
+function gapNote() {
+  if (!S.gap || S.gap.day !== S.day) return null;
+  return h("div", { class: "gapnote", role: "status" },
+    h("span", null, `${toHHMM(S.gap.a)}〜${toHHMM(S.gap.b)} の空き（${dur(S.gap.b - S.gap.a)}）に入る回だけ出しています`),
+    h("button", { type: "button", class: "btn", onclick: () => { S.gap = null; render(); } }, "解除"),
+  );
+}
+
+function card(show) {
+  const day = S.day;
+  const picked = S.plan.find((p) => p.showId === show.id);
+  const fav = S.favorites.has(show.id);
+  const slots = show.slots[day].map((x) => {
+    const st = slotStatus(slotObj(show, day, x), S.plan, S.buffer);
+    const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+    return h("button", {
+      type: "button",
+      id: `s-${show.id}-${day}-${x.start}`,
+      class: `slot ${st.state}${outside ? " outside" : ""}`,
+      "aria-pressed": String(st.state === "chosen"),
+      "aria-label": slotLabel(show, day, x, st),
+      onclick: () => toggleSlot(show, day, x),
+    }, x.start, h("small", null, slotHint(show, day, x, st)));
+  });
+  const pickedElsewhere = picked && picked.day !== day ? h("p", { class: "note" }, `${DAY_LABEL[picked.day]} ${picked.start} の回を選んでいます`) : null;
+
+  return h("article", { class: `card${picked ? " has-pick" : ""}`, style: floorStyle(show.floor) },
+    h("div", { class: "card-h" },
+      h("button", {
+        type: "button", class: "star", id: `fav-${show.id}`, "aria-pressed": String(fav),
+        "aria-label": fav ? `${show.title}を気になるから外す` : `${show.title}を気になるに入れる`,
+        onclick: () => {
+          if (fav) S.favorites.delete(show.id);
+          else S.favorites.add(show.id);
+          persist();
+          render();
+        },
+      }, fav ? "★" : "☆"),
+      h("h3", null, show.title),
+      h("span", { class: "diff", title: "難易度（10段階）" }, show.difficulty != null ? `難易度 ${show.difficulty}` : "難易度 −"),
+    ),
+    h("p", { class: "meta" },
+      h("span", null, show.group),
+      h("span", null, h("span", { class: "fl" }, FLOORS[show.floor].label), " ", show.room),
+      h("span", null, show.format),
+      h("span", null, `${show.durationMin}分`),
+      h("span", null, `${yen(show.price)}/人`),
+      h("span", null, show.people),
+      h("span", null, show.run),
+    ),
+    h("p", { class: "tags" }, show.tags.join(" / ")),
+    show.note ? h("p", { class: "note" }, show.note) : null,
+    show.floor === "11F" ? h("p", { class: "note" }, "ホール公演：開始時刻に1Fに集合") : null,
+    pickedElsewhere,
+    h("div", { class: "slots", role: "group", "aria-label": `${show.title}の回` }, slots),
+  );
+}
+
+function walkIns() {
+  const list = WALK_INS.filter((w) => w.days.includes(S.day));
+  return h("details", { class: "walk" },
+    h("summary", null, `予約不要で遊べるコンテンツ（${DAY_LABEL[S.day]}・${list.length}件）`),
+    h("ul", null, list.map((w) =>
+      h("li", null,
+        h("b", null, w.title),
+        h("p", { class: "meta" },
+          h("span", null, w.group),
+          h("span", null, w.how),
+          h("span", null, `目安 ${w.time}`),
+          h("span", null, w.price),
+          h("span", null, `人数 ${w.people}`),
+          h("span", null, w.difficulty != null ? `難易度 ${w.difficulty}` : "難易度 −"),
+        ),
+        h("p", { class: "tags" }, w.tags.join(" / ")),
+      ))),
+  );
+}
+
+function listView() {
+  const shown = sorted(SHOWS.filter(matches));
+  const total = SHOWS.filter((s) => s.slots[S.day]).length;
+  return h("div", null,
+    filters(),
+    gapNote(),
+    h("p", { class: "legend", "aria-hidden": "true" },
+      h("span", null, h("i", { class: "l-chosen" }), "選択中"),
+      h("span", null, h("i"), "入る"),
+      h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
+      h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
+    ),
+    h("p", { class: "count", role: "status" }, `${DAY_LABEL[S.day]} ${total}公演のうち ${shown.length}件`),
+    shown.length
+      ? h("div", { class: "cards" }, shown.map(card))
+      : h("div", { class: "none" }, "条件に合う公演がありません。絞り込みをゆるめてください。"),
+    walkIns(),
+  );
+}
+
+/* ---------------- 時間割 ---------------- */
+
+const PPM = 1.5; // 1分あたりのpx
+const PAD = 10; // 一番上の目盛りが見出しに隠れないよう、上にとる余白
+function gridView() {
+  const day = S.day;
+  const O = toMinutes(OPEN);
+  const C = toMinutes(CLOSE);
+  const H = (C - O) * PPM + PAD * 2;
+  // 列は「部屋＋レーン」。同じ部屋で日ごとに公演が変わるので、その日の公演から組む
+  const cols = [];
+  for (const s of SHOWS) {
+    if (!s.slots[day]) continue;
+    if (S.floor !== "all" && s.floor !== S.floor) continue;
+    cols.push(s);
+  }
+  const axis = h("div", { class: "gaxis", style: `--h:${H}px` });
+  const lines = [];
+  for (let m = O; m <= C; m += 30) {
+    const y = (m - O) * PPM + PAD;
+    if (m % 60 === 0) axis.append(h("span", { style: `top:${y}px` }, toHHMM(m)));
+    lines.push(y);
+  }
+  const header = [h("div", { class: "gh corner" })].concat(
+    cols.map((s) => h("div", { class: "gh", style: floorStyle(s.floor) }, h("b", null, `${FLOORS[s.floor].label} ${s.room}`), s.title)),
+  );
+  const body = cols.map((s) => {
+    const col = h("div", { class: "gcol", style: `--h:${H}px` },
+      lines.map((y, i) => h("div", { class: `hline${i % 2 ? " half" : ""}`, style: `top:${y}px` })));
+    for (const x of s.slots[day]) {
+      const st = slotStatus(slotObj(s, day, x), S.plan, S.buffer);
+      const outside = S.gap && !fitsGap(x, S.gap, S.buffer) && st.state !== "chosen";
+      const top = (toMinutes(x.start) - O) * PPM + PAD;
+      const ht = (toMinutes(x.end) - toMinutes(x.start)) * PPM;
+      col.append(h("button", {
+        type: "button",
+        id: `g-${s.id}-${day}-${x.start}`,
+        class: `gb ${st.state}${outside ? " outside" : ""}`,
+        style: `top:${top}px;height:${ht - 1}px`,
+        "aria-pressed": String(st.state === "chosen"),
+        "aria-label": slotLabel(s, day, x, st),
+        title: `${s.title} ${x.start}-${x.end}`,
+        onclick: () => toggleSlot(s, day, x),
+      }, `${st.state === "chosen" ? "✓ " : ""}${x.start}–${x.end}`));
+    }
+    return col;
+  });
+  return h("div", null,
+    h("div", { class: "tools" },
+      h("label", { class: "field", for: "gfloor" }, "階",
+        h("select", { id: "gfloor", onchange: (e) => { S.floor = e.target.value; render(); } },
+          [["all", "すべて"], ["11F", "11階"], ["2F", "2階"], ["4F", "4階"]].map(([v, t]) => h("option", { value: v, selected: S.floor === v }, t)))),
+      h("span", { class: "count" }, "枠を押すと予定に入ります。重なる枠を押すと入れ替えます。"),
+    ),
+    gapNote(),
+    h("div", { class: "grid-wrap" },
+      h("div", { class: "grid", style: `--cols:${cols.length}` }, header, axis, body)),
+  );
+}
+
+/* ---------------- 予定 ---------------- */
+
+function planPanel() {
+  const day = S.day;
+  const sum = summarize(S.plan, SHOWS);
+  const d = sum.days[day] ?? { count: 0, price: 0, minutes: 0 };
+  const items = S.plan.filter((p) => p.day === day);
+  const gaps = gapsOf(S.plan, day, { open: OPEN, close: CLOSE });
+
+  const tl = h("ol", { class: "tl", "aria-label": `${DAY_LABEL[day]}の予定` });
+  const gapRow = (g) => {
+    const len = g.b - g.a;
+    const active = S.gap && S.gap.day === day && S.gap.a === g.a && S.gap.b === g.b;
+    const room = len - (g.edgeA ? 0 : S.buffer) - (g.edgeB ? 0 : S.buffer);
+    const tight = !g.edgeA && !g.edgeB && len < S.buffer;
+    const li = h("li", { class: `gap${tight ? " warn" : ""}` });
+    if (tight) li.append(`あき${len}分・移動がきつい`);
+    else if (room >= 15) {
+      li.append(h("button", {
+        type: "button", class: "find", "aria-pressed": String(!!active),
+        onclick: () => {
+          S.gap = active ? null : { day, ...g };
+          S.view = S.view === "grid" ? "grid" : "list";
+          S.sheet = false;
+          render();
+          // 一覧の先頭（「〜の空きに入る回だけ」の表示）まで戻す。上の帯のぶん少し下げる
+          const m = document.getElementById("main");
+          if (!active && m) window.scrollTo({ top: Math.max(0, m.getBoundingClientRect().top + window.scrollY - 70) });
+        },
+      }, `${toHHMM(g.a)}〜${toHHMM(g.b)} あき${dur(len)}　${active ? "絞り込みを解除" : "→ 入る回を探す"}`));
+    } else li.append(`あき${len}分`);
+    return li;
+  };
+
+  // 予定と空きを時刻順に並べる
+  const rows = [
+    ...items.map((p) => ({ t: toMinutes(p.start), p })),
+    ...gaps.map((g) => ({ t: g.a, g })),
+  ].sort((x, y) => x.t - y.t || (x.g ? -1 : 1));
+  // 予定どうしがくっついている（あき0分）場合は空きが出ないので、注意だけ挟む
+  let prev = null;
+  for (const r of rows) {
+    if (r.g) {
+      tl.append(gapRow(r.g));
+      prev = null;
+      continue;
+    }
+    if (prev && toMinutes(prev.end) === toMinutes(r.p.start)) tl.append(h("li", { class: "gap warn" }, "あき0分・移動がきつい"));
+    tl.append(planItem(r.p));
+    prev = r.p;
+  }
+
+  const both = DAYS.map((x) => {
+    const v = sum.days[x];
+    return `${DAY_LABEL[x]} ${v ? `${v.count}公演 ${yen(v.price)}` : "なし"}`;
+  }).join(" ／ ");
+
+  return h("aside", { class: `plan${S.sheet ? " open" : ""}`, id: "plan", "aria-label": "自分の予定" },
+    h("div", { class: "plan-h" },
+      h("h2", null, `${DAY_LABEL[day]}の予定`,
+        h("button", { type: "button", class: "btn sheet-close", onclick: closeSheet }, "閉じる")),
+      h("p", { class: "stats" },
+        h("b", null, `${d.count}公演`), "・", h("b", null, yen(d.price)), `・謎解き ${dur(d.minutes)}`,
+        sum.total.count ? `・購入済み ${sum.total.bought}/${sum.total.count}` : ""),
+    ),
+    items.length ? tl : h("p", { class: "empty" }, "まだ予定がありません。公演の時刻を押すと、ここに入ります。"),
+    h("p", { class: "both" }, `2日間：${both}・合計 ${yen(sum.total.price)}`),
+    addForm(),
+    h("div", { class: "plan-f" },
+      h("button", { type: "button", class: "btn", disabled: !S.plan.length, onclick: copyText }, "テキストでコピー"),
+      h("button", { type: "button", class: "btn", disabled: !S.plan.length, onclick: copyLink }, "共有URLをコピー"),
+      h("button", {
+        type: "button", class: "btn quiet", disabled: !items.length,
+        onclick: () => {
+          if (!confirm(`${DAY_LABEL[day]}の予定を全部消します。よろしいですか？`)) return;
+          const before = S.plan;
+          setPlan(S.plan.filter((p) => p.day !== day), `${DAY_LABEL[day]}の予定を消しました`, before);
+        },
+      }, "この日の予定を全部消す"),
+    ),
+  );
+}
+
+function planItem(p) {
+  const show = showOf(p);
+  const before = () => S.plan;
+  const rm = h("button", {
+    type: "button", class: "rm",
+    "aria-label": `${nameOf(p)} ${p.start} を予定から外す`,
+    onclick: () => { const b = before(); setPlan(unchoose(S.plan, p), `${nameOf(p)} を外しました`, b); },
+  }, "外す");
+  if (!show) {
+    return h("li", { class: "it mine" },
+      h("div", { class: "tm" }, p.start, h("small", null, `〜${p.end}`)),
+      h("div", null, h("div", { class: "ti" }, p.label)),
+      h("div", { class: "acts" }, rm),
+    );
+  }
+  const id = `buy-${p.showId}`;
+  return h("li", { class: `it${p.bought ? " bought" : ""}`, style: floorStyle(show.floor) },
+    h("div", { class: "tm" }, p.start, h("small", null, `〜${p.end}`)),
+    h("div", null,
+      h("div", { class: "ti" }, show.title),
+      h("div", { class: "sub" }, h("span", { class: "fl" }, FLOORS[show.floor].label), ` ${show.room}・${yen(priceOf(show, p.start))}`),
+      show.floor === "11F" ? h("div", { class: "hall" }, "開始時刻に1Fに集合") : null,
+    ),
+    h("div", { class: "acts" },
+      h("label", { class: "buy", for: id },
+        h("input", {
+          id, type: "checkbox", checked: !!p.bought,
+          onchange: (e) => {
+            S.plan = S.plan.map((x) => (x === p ? { ...x, bought: e.target.checked || undefined } : x));
+            persist();
+            render();
+          },
+        }), "購入済み"),
+      rm,
+    ),
+  );
+}
+
+function addForm() {
+  const start = h("input", { type: "time", id: "add-start", step: 300, min: "09:00", max: "21:00", required: true });
+  const end = h("input", { type: "time", id: "add-end", step: 300, min: "09:00", max: "21:00", required: true });
+  const label = h("select", { id: "add-label" }, LABELS.map((l) => h("option", { value: l }, l)));
+  const err = h("p", { class: "err", role: "alert" });
+  const submit = (e) => {
+    e.preventDefault();
+    const a = start.value;
+    const b = end.value;
+    if (!a || !b) {
+      err.textContent = "開始と終了の時刻を入れてください。";
+      return;
+    }
+    const norm = (v) => v.replace(/^0(\d):/, "$1:");
+    const item = { day: S.day, start: norm(a), end: norm(b), label: label.value };
+    if (toMinutes(item.start) >= toMinutes(item.end)) {
+      err.textContent = "終了は開始より後の時刻にしてください。";
+      return;
+    }
+    const st = slotStatus(item, S.plan, 0);
+    if (st.state === "conflict") {
+      err.textContent = `${st.with.map(nameOf).join("・")}と重なっています。時刻をずらすか、先にそちらを外してください。`;
+      return;
+    }
+    const before = S.plan;
+    setPlan(choose(S.plan, item).plan, `${item.label} ${item.start}〜${item.end} を足しました`, before);
+  };
+  return h("form", { class: "addform", onsubmit: submit },
+    h("fieldset", null,
+      h("legend", null, "ごはん・休憩・予約不要コンテンツなどを足す"),
+      h("div", { class: "row" },
+        h("label", { class: "sr", for: "add-label" }, "種類"), label,
+        h("label", { class: "sr", for: "add-start" }, "開始"), start, "〜",
+        h("label", { class: "sr", for: "add-end" }, "終了"), end,
+        h("button", { type: "submit", class: "btn" }, "足す"),
+      ),
+      err,
+    ),
+  );
+}
+
+async function copy(text, okMsg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    say(okMsg);
+  } catch {
+    prompt("コピーできませんでした。下の文字を選んでコピーしてください。", text);
+  }
+}
+function copyText() {
+  copy(`${FES.title} 予定\n\n${planToText(S.plan, SHOWS, FES.days)}`, "予定をテキストでコピーしました");
+}
+function copyLink() {
+  const url = `${location.origin}${location.pathname}#p=${encodePlan(S.plan, CTX)}`;
+  copy(url, "共有URLをコピーしました（購入済みの印は含みません）");
+}
+
+/* ---------------- スマホの帯 ---------------- */
+
+function dock() {
+  const sum = summarize(S.plan, SHOWS);
+  const d = sum.days[S.day] ?? { count: 0, price: 0 };
+  return h("div", { class: "dock" },
+    h("div", { class: "sum" }, h("b", null, `${DAY_LABEL[S.day]} ${d.count}公演`), h("br"), `${yen(d.price)}・2日間で${sum.total.count}公演`),
+    h("button", {
+      type: "button", id: "open-plan", class: "btn primary", "aria-controls": "plan", "aria-expanded": String(S.sheet),
+      onclick: () => { S.sheet = true; render(); document.querySelector("#plan .sheet-close")?.focus(); },
+    }, "予定を見る"),
+  );
+}
+
+/* ---------------- 描画 ---------------- */
+
+// 読み上げを確実にするため、お知らせの領域は1度だけ作って使い回す（描き直しで作り直さない）
+let toastEl;
+function renderToast() {
+  if (!toastEl) return;
+  toastEl.replaceChildren();
+  if (!S.toast) {
+    toastEl.hidden = true;
+    return;
+  }
+  toastEl.hidden = false;
+  toastEl.append(h("span", null, S.toast.text));
+  if (S.toast.undo) {
+    const undo = S.toast.undo;
+    toastEl.append(h("button", {
+      type: "button",
+      onclick: () => {
+        S.plan = undo;
+        S.toast = null;
+        persist();
+        render();
+        renderToast();
+      },
+    }, "元に戻す"));
+  }
+}
+
+let mainEl;
+function renderMain() {
+  // 検索の入力中はフォーカスを失わないよう、一覧だけを描き直す
+  const cards = mainEl?.querySelector(".cards, .none");
+  const countEl = mainEl?.querySelector(".count");
+  if (!cards || S.view !== "list") return render();
+  const shown = sorted(SHOWS.filter(matches));
+  const total = SHOWS.filter((s) => s.slots[S.day]).length;
+  countEl.textContent = `${DAY_LABEL[S.day]} ${total}公演のうち ${shown.length}件`;
+  cards.replaceWith(
+    shown.length
+      ? h("div", { class: "cards" }, shown.map(card))
+      : h("div", { class: "none" }, "条件に合う公演がありません。絞り込みをゆるめてください。"),
+  );
+}
+
+function render() {
+  const app = document.getElementById("app");
+  const scroll = window.scrollY;
+  const active = document.activeElement?.id;
+  mainEl = h("main", { id: "main", "aria-label": "公演" }, S.view === "grid" ? gridView() : listView());
+  const parts = [
+    topbar(),
+    banners(),
+    h("div", { class: "layout" }, mainEl, planPanel()),
+    h("footer", { class: "foot" },
+      h("p", null, "非公式のファンツールです。時間割は公式タイムテーブルから書き写したもので、誤りがあるかもしれません。満席状況は反映されません。"),
+      h("p", null, "最新情報は ", h("a", { href: FES.url, target: "_blank", rel: "noopener noreferrer" }, "公式サイト"), "、チケットは ",
+        h("a", { href: FES.ticketUrl, target: "_blank", rel: "noopener noreferrer" }, "ESCAPE.ID"), " で確認してください。"),
+    ),
+    dock(),
+  ];
+  app.replaceChildren(...parts.filter(Boolean));
+  if (!toastEl) {
+    toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite", hidden: true });
+    document.body.append(toastEl);
+  }
+  renderToast();
+  // スマホで予定シートを開いている間は、裏の画面をフォーカス・読み上げの対象から外す
+  if (S.sheet) for (const el of app.children) if (el !== app.querySelector(".layout")) el.inert = true;
+  if (S.sheet) mainEl.inert = true;
+  document.body.style.overflow = S.sheet ? "hidden" : "";
+  window.scrollTo(0, scroll);
+  if (active) document.getElementById(active)?.focus({ preventScroll: true });
+}
+
+function closeSheet() {
+  S.sheet = false;
+  render();
+  document.getElementById("open-plan")?.focus();
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && S.sheet) closeSheet();
+});
+
+// 共有URLを開いたまま別の共有URLを貼られたとき
+window.addEventListener("hashchange", () => {
+  takeShared();
+  render();
+});
+
+takeShared();
+render();
+})();
+</script>
+</body>
+</html>
