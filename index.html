@@ -15,8 +15,10 @@
   color-scheme:light dark;
   --bg:#eef1f5; --surface:#fff; --sunken:#e4e8ee; --raised:#f7f9fb;
   --ink:#141b26; --muted:#4a5566; --subtle:#5a6577;
-  --line:#d3d9e2; --line-strong:#b9c2ce;
+  --line:#d3d9e2; --line-strong:#7d889a;
   --accent:#c62f3b; --accent-ink:#fff; --accent-soft:#fbe9ea;
+  --band:#1d2740; --band-ink:#fff; --band-sub:#c3cbe0; --band-line:#47557a;
+  --focus:#1a56db; --focus-on-band:#9dbdff;
   --f11:#7b3fb3; --f2:#157a86; --f4:#8f5409;
   --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
   --ok:#1e6b48;
@@ -31,8 +33,10 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
   --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
-  --line:#2e3744; --line-strong:#3f4a5a;
+  --line:#2e3744; --line-strong:#6b7789;
   --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
+  --band:#0b0f16; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
+  --focus:#7aa7ff; --focus-on-band:#7aa7ff;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
@@ -45,8 +49,10 @@
 :root[data-theme="dark"]{
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
   --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
-  --line:#2e3744; --line-strong:#3f4a5a;
+  --line:#2e3744; --line-strong:#6b7789;
   --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
+  --band:#0b0f16; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
+  --focus:#7aa7ff; --focus-on-band:#7aa7ff;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
   --ok:#6fd0a0;
@@ -62,12 +68,21 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;
   font-variant-numeric:tabular-nums}
 button,input,select{font:inherit;color:inherit}
-:where(button,input,select,summary,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* フォーカスは青の3px枠で統一（赤は「選択中」と紛れるので使わない） */
+:where(button,input,select,summary,a,[tabindex]):focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 a{color:inherit}
 
 /* ---- 上部 ---- */
-.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+/* 濃紺の帯＋赤い細線。祭りの「のれん」のつもりで、道具としての見やすさは崩さない */
+.top{position:sticky;top:0;z-index:20;background:var(--band);color:var(--band-ink);border-bottom:3px solid var(--accent)}
+.top :focus-visible{outline-color:var(--focus-on-band)}
+.top .brand span,.top .field{color:var(--band-sub)}
+.top .seg{border-color:var(--band-line)}
+.top .seg button{background:transparent;color:var(--band-sub)}
+.top .seg button+button{border-left-color:var(--band-line)}
+.top .seg button[aria-pressed="true"]{background:var(--band-ink);color:var(--band)}
+.top select{background:var(--band);color:var(--band-ink);border-color:var(--band-line)}
 .top-in{max-width:1280px;margin:0 auto;padding:10px 16px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .brand{display:flex;align-items:baseline;gap:8px;margin-right:auto}
 .brand h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:.06em}
@@ -275,7 +290,7 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .arr .err{color:var(--accent);font-size:.8rem;margin:6px 0 0}
 .arr-out{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
 .arr-out:focus{outline:none}
-.arr-out:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.arr-out:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .arr-sum{margin:0 0 6px;font-weight:700;font-size:.88rem}
 .arr-why{margin:0 0 8px;padding-left:1.2em;font-size:.78rem;color:var(--warn)}
 .arr-plan{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:8px 10px;margin:8px 0}
