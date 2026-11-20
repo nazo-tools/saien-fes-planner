@@ -334,8 +334,17 @@ function card(show) {
   });
   const pickedElsewhere = picked && picked.day !== day ? h("p", { class: "note" }, `${DAY_LABEL[picked.day]} ${picked.start} の回を選んでいます`) : null;
 
+  // 上部は3行：①階・部屋・所要・料金・難易度 ②公演名と★ ③団体・人数・形式・初演/再演・タグ
   return h("article", { class: `card${picked ? " has-pick" : ""}`, style: floorStyle(show.floor) },
+    h("p", { class: "key" },
+      h("span", { class: "flc" }, show.floor),
+      h("span", { class: "room" }, show.room),
+      h("span", null, `${show.durationMin}分`),
+      h("span", null, `${yen(show.price)}/人`),
+      h("span", { title: "難易度（10段階）" }, show.difficulty != null ? `難易度${show.difficulty}` : "難易度−"),
+    ),
     h("div", { class: "card-h" },
+      h("h3", null, show.title),
       h("button", {
         type: "button", class: "star", id: `fav-${show.id}`, "aria-pressed": String(fav),
         "aria-label": fav ? `${show.title}を気になるから外す` : `${show.title}を気になるに入れる`,
@@ -345,20 +354,11 @@ function card(show) {
           persist();
           render();
         },
-      }, fav ? "★" : "☆"),
-      h("h3", null, show.title),
-      h("span", { class: "diff", title: "難易度（10段階）" }, show.difficulty != null ? `難易度 ${show.difficulty}` : "難易度 −"),
+      }, h("span", { "aria-hidden": "true" }, fav ? "★" : "☆"), "気になる"),
     ),
     h("p", { class: "meta" },
-      h("span", null, show.group),
-      h("span", null, h("span", { class: "fl" }, FLOORS[show.floor].label), " ", show.room),
-      h("span", null, show.format),
-      h("span", null, `${show.durationMin}分`),
-      h("span", null, `${yen(show.price)}/人`),
-      h("span", null, show.people),
-      h("span", null, show.run),
+      [show.group, show.people, show.format, show.run, show.tags.join("／")].filter(Boolean).join(" ・ "),
     ),
-    h("p", { class: "tags" }, show.tags.join(" / ")),
     show.note ? h("p", { class: "note" }, show.note) : null,
     show.floor === "11F" ? h("p", { class: "note" }, "ホール公演：開始時刻に1Fに集合") : null,
     pickedElsewhere,
