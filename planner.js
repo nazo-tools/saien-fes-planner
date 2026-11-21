@@ -67,7 +67,7 @@ export function slotFace(st, x, { outside = false, special = null } = {}) {
   if (outside) return { kind: "outside", word: "時間外" };
   switch (st.state) {
     case "tight": return { kind: "tight", word: `あき${st.gap}分` };
-    case "conflict": return { kind: "conflict", word: "重なる" };
+    case "conflict": return { kind: "conflict", word: "別の予定" };
     case "moved": return { kind: "moved", word: "入れ替え" };
     default: return { kind: "free", word: special ?? `〜${x.end}` };
   }
