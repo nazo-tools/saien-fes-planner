@@ -10,14 +10,15 @@
    --f11/--f2/--f4 : 階。カードの印と時間割の列見出しにだけ使う
    --warn    : 入るけれど移動がきつい
    --st-*    : 回ボタンの状態。色に加えて、地の模様・枠の線種・右上の記号・2行目の言葉でも分ける
-               （選択中=塗り / 入る=実線 / 移動きつい=黄地+破線 / 重なる=斜線+取り消し線 / 時間外=地なし+点線） */
+               （選択中=塗り / 入る=実線 / 移動きつい=黄地+破線 / 別の予定=斜線+取り消し線 / 時間外=地なし+点線） */
 :root{
   color-scheme:light dark;
   --bg:#eef1f5; --surface:#fff; --sunken:#e4e8ee; --raised:#f7f9fb;
   --ink:#141b26; --muted:#4a5566; --subtle:#5a6577;
   --line:#d3d9e2; --line-strong:#7d889a;
-  --accent:#c62f3b; --accent-ink:#fff; --accent-soft:#fbe9ea;
-  --band:#1d2740; --band-ink:#fff; --band-sub:#c3cbe0; --band-line:#47557a;
+  --accent:#1c2541; --accent-ink:#fff; --accent-soft:#e6e9f2;
+  --danger:#b42318;
+  --band:#1c2541; --band-ink:#fff; --band-sub:#c3cbe0; --band-line:#47557a;
   --focus:#1a56db; --focus-on-band:#9dbdff;
   --f11:#7b3fb3; --f2:#157a86; --f4:#8f5409;
   --warn:#9a5806; --warn-bg:#fdf1dc; --warn-line:#e6b867;
@@ -35,8 +36,9 @@
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
   --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
   --line:#2e3744; --line-strong:#6b7789;
-  --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
-  --band:#0b0f16; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
+  --accent:#7aa7ff; --accent-ink:#0a1428; --accent-soft:#1c2840;
+  --danger:#ff8a80;
+  --band:#080c15; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
   --focus:#7aa7ff; --focus-on-band:#7aa7ff;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
@@ -52,8 +54,9 @@
   --bg:#12161d; --surface:#1a2029; --sunken:#202733; --raised:#1e2530;
   --ink:#e9edf3; --muted:#b0b9c6; --subtle:#97a1b0;
   --line:#2e3744; --line-strong:#6b7789;
-  --accent:#ff6b74; --accent-ink:#1a0d0f; --accent-soft:#3a1f24;
-  --band:#0b0f16; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
+  --accent:#7aa7ff; --accent-ink:#0a1428; --accent-soft:#1c2840;
+  --danger:#ff8a80;
+  --band:#080c15; --band-ink:#e9edf3; --band-sub:#a3adbd; --band-line:#3f4a5a;
   --focus:#7aa7ff; --focus-on-band:#7aa7ff;
   --f11:#b98ae6; --f2:#4fc2cf; --f4:#e3a548;
   --warn:#f0b75c; --warn-bg:#33281a; --warn-line:#7a5a26;
@@ -78,7 +81,7 @@ a{color:inherit}
 
 /* ---- 上部 ---- */
 /* 濃紺の帯＋赤い細線。祭りの「のれん」のつもりで、道具としての見やすさは崩さない */
-.top{position:sticky;top:0;z-index:20;background:var(--band);color:var(--band-ink);border-bottom:3px solid var(--accent)}
+.top{position:sticky;top:0;z-index:20;background:var(--band);color:var(--band-ink);box-shadow:0 1px 0 var(--band-line)}
 .top :focus-visible{outline-color:var(--focus-on-band)}
 .top .brand span,.top .field{color:var(--band-sub)}
 .top .seg{border-color:var(--band-line)}
@@ -147,9 +150,8 @@ select,input[type="search"],input[type="time"]{border:1px solid var(--line-stron
 
 /* ---- 公演カード ---- */
 .cards{display:grid;gap:10px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px 12px 16px;
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;
   box-shadow:var(--shadow);position:relative}
-.card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 3px 3px 0;background:var(--fc)}
 .card.has-pick{border-color:var(--accent)}
 /* 上部は3行：①比べる数字（階・部屋・所要・料金・難易度） ②公演名と★ ③団体などの補足 */
 .card-h{display:flex;gap:8px;align-items:flex-start;margin-top:4px}
@@ -305,7 +307,7 @@ p.stats{padding:0 14px}
 .addform legend{font-size:.8rem;font-weight:700;padding:0;margin-bottom:4px}
 fieldset{border:0;margin:0;padding:0;min-width:0}
 .addform .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.addform .err{flex-basis:100%;color:var(--accent);font-size:.78rem;margin:2px 0 0}
+.addform .err{flex-basis:100%;color:var(--danger);font-size:.78rem;margin:2px 0 0}
 .plan-f{border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px}
 .both{padding:0 14px 12px;font-size:.78rem;color:var(--muted)}
 
@@ -324,7 +326,7 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .arr-hint{margin:0 0 8px;font-size:.78rem;color:var(--muted)}
 .arr-row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
 .arr-lbl{font-size:.78rem;color:var(--muted)}
-.arr .err{color:var(--accent);font-size:.8rem;margin:6px 0 0}
+.arr .err{color:var(--danger);font-size:.8rem;margin:6px 0 0}
 .arr-out{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
 .arr-out:focus{outline:none}
 .arr-out:focus-visible{outline:3px solid var(--focus);outline-offset:2px}

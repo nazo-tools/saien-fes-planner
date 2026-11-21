@@ -133,7 +133,7 @@ function slotLabel(show, day, x, st, outside = false) {
   switch (st.state) {
     case "chosen": return `${base}、予定に入っています。押すと外します`;
     case "moved": return `${base}、別の回を選んでいます。押すとこの回に入れ替えます`;
-    case "conflict": return `${base}、${st.with.map(nameOf).join("・")}と重なります。押すと入れ替えます`;
+    case "conflict": return `${base}、同じ時間に${st.with.map(nameOf).join("・")}が入っています。押すと入れ替えます`;
     case "tight": return `${base}、前後のあきが${st.gap}分です`;
     default: return base;
   }
@@ -302,7 +302,7 @@ function legend() {
     h("span", null, h("i", { class: "l-chosen" }), "選択中"),
     h("span", null, h("i"), "入る"),
     h("span", null, h("i", { class: "l-tight" }), "入るが移動がきつい"),
-    h("span", null, h("i", { class: "l-conflict" }), "重なる（押すと入れ替え）"),
+    h("span", null, h("i", { class: "l-conflict" }), "別の予定あり（押すと入れ替え）"),
     h("span", null, h("i", { class: "l-outside" }), "時間外（選んだ空きに入らない）"),
   );
 }
@@ -463,7 +463,7 @@ function gridView() {
       floorBtn("all", "すべて"), floorBtn("11F", "11F"), floorBtn("2F", "2F"), floorBtn("4F", "4F")),
     h("div", { class: "tools" },
       bufferField("buffer-m", "m-only"),
-      h("span", { class: "count" }, "枠を押すと予定に入ります。重なる枠を押すと入れ替えます。横にスクロールすると、ほかの部屋が出ます。"),
+      h("span", { class: "count" }, "枠を押すと予定に入ります。別の予定がある枠を押すと入れ替えます。横にスクロールすると、ほかの部屋が出ます。"),
     ),
     gapNote(),
     h("div", { class: "grid-wrap" },
@@ -513,7 +513,7 @@ function arrangeCta() {
     h("span", { class: "arrcta-star", "aria-hidden": "true" }, "★"),
     h("p", null, h("b", null, `★ ${fs.count}公演`),
       fs.left < fs.count ? `（まだ予定にないのは${fs.left}公演）` : "",
-      "を、重ならず待ち時間が少ない並べ方で最大3案つくれます"),
+      "を、時間がぶつからず待ち時間が少ない並べ方で最大3案つくれます"),
     h("button", { type: "button", id: "arrcta-go", class: "btn ink", onclick: openArrange }, "★から組む"),
   );
 }
@@ -775,7 +775,7 @@ function addForm() {
     }
     const st = slotStatus(item, S.plan, 0);
     if (st.state === "conflict") {
-      err.textContent = `${st.with.map(nameOf).join("・")}と重なっています。時刻をずらすか、先にそちらを外してください。`;
+      err.textContent = `同じ時間に${st.with.map(nameOf).join("・")}が入っています。時刻をずらすか、先にそちらを外してください。`;
       return;
     }
     const before = S.plan;

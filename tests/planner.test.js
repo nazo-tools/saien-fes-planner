@@ -80,7 +80,7 @@ describe("slotFace（回ボタンの見た目の種類と2行目の言葉）", (
     expect(slotFace({ state: "chosen" }, x)).toEqual({ kind: "chosen", word: "予定中" });
     expect(slotFace({ state: "free" }, x)).toEqual({ kind: "free", word: "〜11:00" });
     expect(slotFace({ state: "tight", gap: 5 }, x)).toEqual({ kind: "tight", word: "あき5分" });
-    expect(slotFace({ state: "conflict", with: [] }, x)).toEqual({ kind: "conflict", word: "重なる" });
+    expect(slotFace({ state: "conflict", with: [] }, x)).toEqual({ kind: "conflict", word: "別の予定" });
     expect(slotFace({ state: "moved" }, x)).toEqual({ kind: "moved", word: "入れ替え" });
   });
 
