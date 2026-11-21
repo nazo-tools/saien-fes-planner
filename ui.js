@@ -11,6 +11,7 @@ import {
   unchoose,
   gapsOf,
   fitsGap,
+  fitsPlan,
   summarize,
   priceOf,
   festivalNow,
@@ -160,14 +161,7 @@ function matches(show) {
     if (!hay.includes(S.q.toLowerCase())) return false;
   }
   if (S.gap && !show.slots[S.day].some((x) => fitsGap(x, S.gap, S.buffer))) return false;
-  if (S.onlyFits) {
-    const picked = S.plan.some((p) => p.showId === show.id);
-    const ok = show.slots[S.day].some((x) => {
-      const st = slotStatus(slotObj(show, S.day, x), S.plan, S.buffer).state;
-      return st === "free" || st === "moved";
-    });
-    if (!picked && !ok) return false;
-  }
+  if (S.onlyFits && !fitsPlan(show, S.day, S.plan, S.buffer)) return false;
   return true;
 }
 
