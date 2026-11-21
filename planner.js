@@ -57,6 +57,18 @@ export function slotStatus(slot, plan, bufferMin = 0) {
 }
 
 /**
+ * 「今の予定に入るものだけ」で出す公演か。
+ * もう予定に入れた公演（どの日でも）は出さない。探したいのは「あと何が入るか」なので。
+ * まだの公演は、その日に問題なく入る回（free）が1つでもあれば出す。
+ */
+export function fitsPlan(show, day, plan, bufferMin = 0) {
+  if (plan.some((p) => p.showId === show.id)) return false;
+  return (show.slots[day] ?? []).some(
+    (x) => slotStatus({ showId: show.id, day, start: x.start, end: x.end }, plan, bufferMin).state === "free",
+  );
+}
+
+/**
  * 回ボタンの見た目の種類（kind = CSSのクラス）と2行目の言葉。
  * 色だけに頼らないよう、どの状態にも言葉を付ける。
  * outside … 空き時間で絞っていて、その空きに入らない回。選択中以外は状態より優先する。

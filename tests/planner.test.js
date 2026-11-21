@@ -11,6 +11,7 @@ import {
   nowNext,
   planToText,
   slotFace,
+  fitsPlan,
 } from "../planner.js";
 
 const shows = [
@@ -70,6 +71,28 @@ describe("slotStatus", () => {
   it("自分で足した予定（ごはん等）とも重なりを見る", () => {
     const p = [{ day: "d1", start: "12:00", end: "13:00", label: "ごはん" }];
     expect(slotStatus(pick("c", "d1", "12:00"), p, 10).state).toBe("conflict");
+  });
+});
+
+describe("fitsPlan（「今の予定に入るものだけ」の判定）", () => {
+  it("予定に入れた公演は出さない（その日に空いた回があっても）", () => {
+    const plan = [pick("a", "d1", "10:00")];
+    expect(fitsPlan(shows[0], "d1", plan, 10)).toBe(false);
+  });
+
+  it("別の日に入れた公演も出さない", () => {
+    const plan = [pick("c", "d2", "10:00")];
+    expect(fitsPlan(shows[2], "d1", plan, 10)).toBe(false);
+  });
+
+  it("まだ入れていない公演は、問題なく入る回が1つでもあれば出す", () => {
+    const plan = [pick("a", "d1", "10:00")];
+    expect(fitsPlan(shows[1], "d1", plan, 10)).toBe(true);
+  });
+
+  it("移動がきつい回・別の予定がある回しかなければ出さない", () => {
+    const plan = [pick("a", "d1", "10:00"), { showId: "x", day: "d1", start: "11:30", end: "13:00" }];
+    expect(fitsPlan(shows[1], "d1", plan, 10)).toBe(false);
   });
 });
 
